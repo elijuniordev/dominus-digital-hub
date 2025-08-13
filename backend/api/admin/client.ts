@@ -1,22 +1,17 @@
 // backend/api/admin/clients.ts
 import { createClient } from '@supabase/supabase-js';
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import {
-  calculate_monthly_total,
-  update_monthly_totals
-} from '../functions/billing'; // Supondo que essas funções estão em um arquivo separado.
 
 const router = Router();
 
-// Configure o Supabase com a Service Role Key
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || '';
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Rota GET para listar clientes e seus serviços
-router.get('/clients', async (req, res) => {
+router.get('/clients', async (req: Request, res: Response) => {
   const { data: clientsData, error } = await supabase
     .from('clients_info')
     .select(`
@@ -24,14 +19,14 @@ router.get('/clients', async (req, res) => {
       full_name,
       business_name,
       phone,
-      contracts(id, status, monthly_total, billing_day, services(name, type))
+      user_id,
+      contracts(id, status, monthly_total, billing_day, services(id, name, type))
     `);
 
   if (error) {
     return res.status(500).json({ error: error.message });
   }
 
-  // Obter emails dos usuários
   const userIds = clientsData.map(client => client.user_id);
   const { data: usersData, error: usersError } = await supabase
     .from('users')
@@ -51,28 +46,25 @@ router.get('/clients', async (req, res) => {
 });
 
 // Rota POST para cadastrar um novo cliente
-router.post('/clients', async (req, res) => {
+router.post('/clients', async (req: Request, res: Response) => {
   const { full_name, business_name, email, phone, billing_day, services } = req.body;
 
   try {
-    // 1. Criar usuário no Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password: uuidv4(), // Senha temporária aleatória
     });
 
-    if (authError) {
-      throw new Error(authError.message);
+    if (authError || !authData.user) {
+      throw new Error(authError ? authError.message : 'Erro desconhecido de autenticação');
     }
     const userId = authData.user.id;
 
-    // 2. Atualizar perfil para 'client'
     await supabase
       .from('users')
       .update({ role: 'client' })
       .eq('id', userId);
 
-    // 3. Criar registro na tabela clients_info
     const { data: clientInfo, error: clientInfoError } = await supabase
       .from('clients_info')
       .insert({
@@ -85,18 +77,16 @@ router.post('/clients', async (req, res) => {
       })
       .select('id');
 
-    if (clientInfoError) {
+    if (clientInfoError || !clientInfo) {
       throw new Error(clientInfoError.message);
     }
     const clientId = clientInfo[0].id;
 
-    // 4. Criar contratos para cada serviço
-    const contractsToInsert = services.map(serviceId => ({
+    const contractsToInsert = services.map((serviceId: string) => ({
       client_id: clientId,
       service_id: serviceId,
       billing_day,
       status: 'active',
-      // O valor será calculado por um trigger no banco de dados
     }));
 
     const { error: contractsError } = await supabase

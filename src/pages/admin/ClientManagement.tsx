@@ -22,16 +22,17 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useCallback } from "react";
 
 const ClientManagement = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [isNewClientDialogOpen, setIsNewClientDialogOpen] = useState(false);
-  const [clients, setClients] = useState([]);
-  const [availableServices, setAvailableServices] = useState([]);
+  const [clients, setClients] = useState([]); // Array vazio para dados da API
+  const [availableServices, setAvailableServices] = useState([]); // Array vazio para dados da API
   const [isLoading, setIsLoading] = useState(true);
   const [newClient, setNewClient] = useState({
-    full_name: "",
+    full_name: "", // Nome do campo conforme a API
     business_name: "",
     email: "",
     phone: "",
@@ -75,11 +76,11 @@ const ClientManagement = () => {
     }));
   };
 
-  const fetchClients = async () => {
+  const fetchClients = useCallback(async () => {
     setIsLoading(true);
     try {
       const clientsRes = await fetch('/api/admin/clients');
-      const servicesRes = await fetch('/api/admin/services'); // Esta rota precisa ser criada
+      const servicesRes = await fetch('/api/services'); // Esta rota precisa ser criada
       
       const clientsData = await clientsRes.json();
       const servicesData = await servicesRes.json();
@@ -101,11 +102,11 @@ const ClientManagement = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchClients();
-  }, []);
+  }, [fetchClients]);
 
   const handleCreateClient = async () => {
     if (!newClient.full_name || !newClient.email || newClient.services.length === 0) {
