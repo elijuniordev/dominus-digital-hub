@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client"; // Importação do cliente Supabase
 
 const ClientLogin = () => {
   const [email, setEmail] = useState("");
@@ -19,23 +20,55 @@ const ClientLogin = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate login process
-    setTimeout(() => {
-      if (email && password) {
-        toast({
-          title: "Login realizado com sucesso!",
-          description: "Redirecionando para o dashboard...",
-        });
-        navigate("/portal/dashboard");
-      } else {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+      if (error) {
         toast({
           title: "Erro no login",
-          description: "Por favor, preencha todos os campos.",
+          description: error.message,
           variant: "destructive",
         });
+      } else if (data.user) {
+        // Após o login, buscamos o perfil para redirecionar corretamente
+        const { data: userRole, error: roleError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        if (roleError) {
+          toast({
+            title: "Erro de autenticação",
+            description: "Não foi possível verificar seu perfil.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Login realizado com sucesso!",
+            description: "Redirecionando para o dashboard...",
+          });
+
+          // Redirecionamento com base no perfil do usuário
+          if (userRole.role === 'admin') {
+            navigate('/admin/dashboard');
+          } else {
+            navigate('/portal/dashboard');
+          }
+        }
       }
+    } catch (err) {
+      toast({
+        title: "Erro de conexão",
+        description: "Não foi possível conectar ao servidor. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (

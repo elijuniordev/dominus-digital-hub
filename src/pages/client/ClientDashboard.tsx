@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,78 +12,110 @@ import {
   CreditCard,
   ExternalLink,
   Eye,
-  Edit
+  Edit,
+  Clock
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const ClientDashboard = () => {
-  // Mock client data
-  const clientData = {
-    name: "Maria Silva",
-    businessName: "Estética Bella Vita",
-    memberSince: "Janeiro 2024",
-    nextBilling: "15 Fev 2024"
-  };
+  const [clientData, setClientData] = useState(null);
+  const [services, setServices] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
-  const services = [
-    {
-      id: 1,
-      name: "Site Profissional",
-      description: "Website responsivo com design moderno",
-      status: "Ativo",
-      progress: 100,
-      icon: Globe,
-      color: "bg-green-500",
-      lastUpdate: "Há 2 dias",
-      actions: ["Visualizar", "Editar"]
-    },
-    {
-      id: 2,
-      name: "Marketing Digital",
-      description: "Gestão de redes sociais e campanhas",
-      status: "Em Andamento",
-      progress: 75,
-      icon: Instagram,
-      color: "bg-blue-500",
-      lastUpdate: "Hoje",
-      actions: ["Ver Relatório"]
-    },
-    {
-      id: 3,
-      name: "Mini-site Personalizado",
-      description: "Página digital para compartilhamento",
-      status: "Ativo",
-      progress: 100,
-      icon: Users,
-      color: "bg-purple-500",
-      lastUpdate: "Há 1 hora",
-      actions: ["Visualizar", "Personalizar"]
-    },
-    {
-      id: 4,
-      name: "Consultoria Digital",
-      description: "Análise e estratégias personalizadas",
-      status: "Agendado",
-      progress: 25,
-      icon: BarChart3,
-      color: "bg-orange-500",
-      lastUpdate: "Há 1 semana",
-      actions: ["Agendar Reunião"]
-    }
-  ];
+  useEffect(() => {
+    const fetchClientData = async () => {
+      try {
+        // 1. Obter a sessão do usuário autenticado
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+          navigate("/portal/login");
+          return;
+        }
+
+        // 2. Buscar o client_info e o nome do negócio
+        const { data: clientInfo, error: clientInfoError } = await supabase
+          .from('clients_info')
+          .select('id, full_name, business_name, created_at')
+          .eq('user_id', user.id)
+          .single();
+
+        if (clientInfoError || !clientInfo) {
+          throw new Error("Dados do cliente não encontrados.");
+        }
+
+        // 3. Buscar os serviços e contratos do cliente
+        const { data: contractsData, error: contractsError } = await supabase
+          .from('contracts')
+          .select(`
+            id,
+            status,
+            contract_date,
+            next_billing_date,
+            services (
+              name, 
+              description,
+              type
+            )
+          `)
+          .eq('client_id', clientInfo.id);
+
+        if (contractsError) {
+          throw new Error("Erro ao buscar contratos.");
+        }
+        
+        setClientData({ ...clientInfo, name: clientInfo.full_name, memberSince: new Date(clientInfo.created_at).toLocaleDateString('pt-BR') });
+        setServices(contractsData);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchClientData();
+  }, [navigate]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "Ativo":
+      case "active":
         return <Badge className="bg-green-100 text-green-800 border-green-200">Ativo</Badge>;
-      case "Em Andamento":
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Em Andamento</Badge>;
-      case "Agendado":
-        return <Badge className="bg-orange-100 text-orange-800 border-orange-200">Agendado</Badge>;
+      case "pending":
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Pendente</Badge>;
+      case "suspended":
+        return <Badge className="bg-orange-100 text-orange-800 border-orange-200">Suspenso</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
   };
+  
+  const totalActiveServices = services.filter(s => s.status === 'active').length;
+  const nextBillingDate = services.find(s => s.next_billing_date)?.next_billing_date || "N/A";
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <h2 className="text-2xl font-bold">Carregando...</h2>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-center p-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Erro</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-red-500">{error}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -113,7 +146,7 @@ const ClientDashboard = () => {
                   Cobrança
                 </Button>
               </Link>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => supabase.auth.signOut()}>
                 Sair
               </Button>
             </nav>
@@ -125,11 +158,11 @@ const ClientDashboard = () => {
         {/* Welcome Section */}
         <div className="mb-8">
           <h2 className="text-3xl font-bold mb-2">
-            Olá, {clientData.name}! 👋
+            Olá, {clientData?.name}! 👋
           </h2>
           <p className="text-muted-foreground">
-            Bem-vinda de volta ao painel do <strong>{clientData.businessName}</strong>. 
-            Cliente desde {clientData.memberSince}.
+            Bem-vinda de volta ao painel do <strong>{clientData?.businessName}</strong>. 
+            Cliente desde {clientData?.memberSince}.
           </p>
         </div>
 
@@ -142,7 +175,7 @@ const ClientDashboard = () => {
                   <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">4</p>
+                  <p className="text-2xl font-bold">{totalActiveServices}</p>
                   <p className="text-sm text-muted-foreground">Serviços Ativos</p>
                 </div>
               </div>
@@ -184,7 +217,7 @@ const ClientDashboard = () => {
                   <CreditCard className="w-4 h-4 text-orange-500" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{clientData.nextBilling}</p>
+                  <p className="text-2xl font-bold">{nextBillingDate}</p>
                   <p className="text-sm text-muted-foreground">Próxima Cobrança</p>
                 </div>
               </div>
@@ -201,12 +234,12 @@ const ClientDashboard = () => {
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center space-x-3">
-                      <div className={`w-12 h-12 ${service.color} rounded-xl flex items-center justify-center`}>
-                        <service.icon className="w-6 h-6 text-white" />
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-purple-500`}>
+                        <Globe className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <CardTitle className="text-lg">{service.name}</CardTitle>
-                        <CardDescription>{service.description}</CardDescription>
+                        <CardTitle className="text-lg">{service.services.name}</CardTitle>
+                        <CardDescription>{service.services.description}</CardDescription>
                       </div>
                     </div>
                     {getStatusBadge(service.status)}
@@ -218,82 +251,45 @@ const ClientDashboard = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Progresso</span>
-                      <span>{service.progress}%</span>
+                      <span>100%</span>
                     </div>
-                    <Progress value={service.progress} className="h-2" />
+                    <Progress value={100} className="h-2" />
                   </div>
 
                   {/* Last Update */}
                   <p className="text-sm text-muted-foreground">
-                    Última atualização: {service.lastUpdate}
+                    Última atualização: Hoje
                   </p>
 
                   {/* Action Buttons */}
                   <div className="flex gap-2 pt-2">
-                    {service.actions.map((action, index) => (
-                      <Button
-                        key={index}
+                    <Button
                         size="sm"
-                        variant={index === 0 ? "default" : "outline"}
-                        className={index === 0 ? "btn-hero" : "btn-outline-brand"}
-                      >
-                        {action === "Visualizar" && <Eye className="w-4 h-4 mr-1" />}
-                        {action === "Personalizar" && <Edit className="w-4 h-4 mr-1" />}
-                        {action === "Editar" && <Edit className="w-4 h-4 mr-1" />}
-                        {action === "Ver Relatório" && <BarChart3 className="w-4 h-4 mr-1" />}
-                        {action === "Agendar Reunião" && <Users className="w-4 h-4 mr-1" />}
-                        <span className="text-xs">{action}</span>
-                      </Button>
-                    ))}
+                        variant="default"
+                        className="btn-hero"
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      <span className="text-xs">Visualizar</span>
+                    </Button>
+                    {service.services.name === 'Mini-site Personalizado' && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="btn-outline-brand"
+                            asChild
+                        >
+                          <Link to="/portal/personalizar">
+                            <Edit className="w-4 h-4 mr-1" />
+                            <span className="text-xs">Personalizar</span>
+                          </Link>
+                        </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         </div>
-
-        {/* Quick Actions */}
-        <Card className="card-elevated">
-          <CardHeader>
-            <CardTitle>Ações Rápidas</CardTitle>
-            <CardDescription>
-              Acesse rapidamente as principais funcionalidades do seu portal
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Link to="/cliente/maria-silva" target="_blank">
-                <Button variant="outline" className="btn-outline-brand w-full h-auto p-4">
-                  <div className="text-center">
-                    <ExternalLink className="w-6 h-6 mx-auto mb-2" />
-                    <p className="font-medium">Ver Mini-site</p>
-                    <p className="text-xs text-muted-foreground">Visualizar como visitante</p>
-                  </div>
-                </Button>
-              </Link>
-
-              <Link to="/portal/personalizar">
-                <Button variant="outline" className="btn-outline-brand w-full h-auto p-4">
-                  <div className="text-center">
-                    <Settings className="w-6 h-6 mx-auto mb-2" />
-                    <p className="font-medium">Personalizar</p>
-                    <p className="text-xs text-muted-foreground">Editar informações</p>
-                  </div>
-                </Button>
-              </Link>
-
-              <Link to="/portal/cobranca">
-                <Button variant="outline" className="btn-outline-brand w-full h-auto p-4">
-                  <div className="text-center">
-                    <CreditCard className="w-6 h-6 mx-auto mb-2" />
-                    <p className="font-medium">Cobrança</p>
-                    <p className="text-xs text-muted-foreground">Ver faturas</p>
-                  </div>
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

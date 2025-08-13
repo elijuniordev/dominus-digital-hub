@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,8 +18,7 @@ import {
   Calendar,
   DollarSign,
   Mail,
-  Phone,
-  MapPin
+  Phone
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -28,87 +27,36 @@ const ClientManagement = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [isNewClientDialogOpen, setIsNewClientDialogOpen] = useState(false);
+  const [clients, setClients] = useState([]);
+  const [availableServices, setAvailableServices] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [newClient, setNewClient] = useState({
-    name: "",
-    businessName: "",
+    full_name: "",
+    business_name: "",
     email: "",
     phone: "",
     address: "",
-    billingDay: "15",
+    billing_day: "15",
     services: [] as string[]
   });
 
-  // Mock clients data
-  const clients = [
-    {
-      id: 1,
-      name: "Maria Silva Santos",
-      businessName: "Estética Bella Vita",
-      email: "maria@bellavita.com",
-      phone: "(11) 9 8765-4321",
-      status: "Ativo",
-      monthlyValue: 297.90,
-      billingDay: 15,
-      joinDate: "Jan 2024",
-      services: ["Site", "Marketing", "Mini-site", "Consultoria"],
-      lastLogin: "Hoje"
-    },
-    {
-      id: 2,
-      name: "João Carlos Mendes",
-      businessName: "Auto Peças JR",
-      email: "joao@autopecasjr.com",
-      phone: "(11) 9 7654-3210",
-      status: "Ativo",
-      monthlyValue: 197.90,
-      billingDay: 10,
-      joinDate: "Dez 2023",
-      services: ["Site", "Mini-site"],
-      lastLogin: "2 dias atrás"
-    },
-    {
-      id: 3,
-      name: "Ana Oliveira Costa",
-      businessName: "Advocacia & Consultoria",
-      email: "ana@advocaciacosta.com",
-      phone: "(11) 9 5432-1098",
-      status: "Pendente",
-      monthlyValue: 397.90,
-      billingDay: 20,
-      joinDate: "Jan 2024",
-      services: ["Site", "Marketing", "Mini-site", "Consultoria", "App"],
-      lastLogin: "Nunca"
-    },
-    {
-      id: 4,
-      name: "Carlos Roberto Silva",
-      businessName: "Restaurante Sabor & Arte",
-      email: "carlos@saborarte.com",
-      phone: "(11) 9 4321-0987",
-      status: "Ativo",
-      monthlyValue: 247.90,
-      billingDay: 5,
-      joinDate: "Nov 2023",
-      services: ["Site", "Marketing", "Mini-site"],
-      lastLogin: "1 semana atrás"
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "active":
+        return <Badge className="bg-green-100 text-green-800 border-green-200">Ativo</Badge>;
+      case "inactive":
+        return <Badge className="bg-red-100 text-red-800 border-red-200">Inativo</Badge>;
+      case "pending":
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Pendente</Badge>;
+      case "suspended":
+        return <Badge className="bg-orange-100 text-orange-800 border-orange-200">Suspenso</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
     }
-  ];
+  };
 
-  const availableServices = [
-    { id: "site", name: "Site Profissional", price: 97.90 },
-    { id: "marketing", name: "Marketing Digital", price: 97.90 },
-    { id: "minisite", name: "Mini-site Personalizado", price: 47.90 },
-    { id: "consultoria", name: "Consultoria Digital", price: 97.90 },
-    { id: "app", name: "Aplicativo Mobile", price: 197.90 }
-  ];
-
-  const handleServiceToggle = (serviceId: string) => {
-    setNewClient(prev => ({
-      ...prev,
-      services: prev.services.includes(serviceId)
-        ? prev.services.filter(s => s !== serviceId)
-        : [...prev.services, serviceId]
-    }));
+  const getClientServices = (contracts) => {
+    return contracts.map(contract => contract.services.name);
   };
 
   const calculateTotal = () => {
@@ -118,8 +66,49 @@ const ClientManagement = () => {
     }, 0);
   };
 
-  const handleCreateClient = () => {
-    if (!newClient.name || !newClient.email || newClient.services.length === 0) {
+  const handleServiceToggle = (serviceId) => {
+    setNewClient(prev => ({
+      ...prev,
+      services: prev.services.includes(serviceId)
+        ? prev.services.filter(s => s !== serviceId)
+        : [...prev.services, serviceId]
+    }));
+  };
+
+  const fetchClients = async () => {
+    setIsLoading(true);
+    try {
+      const clientsRes = await fetch('/api/admin/clients');
+      const servicesRes = await fetch('/api/admin/services'); // Esta rota precisa ser criada
+      
+      const clientsData = await clientsRes.json();
+      const servicesData = await servicesRes.json();
+      
+      setClients(clientsData.map(client => ({
+        ...client,
+        services: getClientServices(client.contracts),
+        monthly_total: client.contracts.reduce((acc, curr) => acc + curr.monthly_total, 0),
+        status: client.contracts.find(c => c.services.name === "Mini-site com Manutenção Proativa")?.status || 'inactive'
+      })));
+
+      setAvailableServices(servicesData);
+    } catch (error) {
+      toast({
+        title: "Erro ao carregar dados",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  const handleCreateClient = async () => {
+    if (!newClient.full_name || !newClient.email || newClient.services.length === 0) {
       toast({
         title: "Campos obrigatórios",
         description: "Preencha nome, email e selecione pelo menos um serviço.",
@@ -128,41 +117,45 @@ const ClientManagement = () => {
       return;
     }
 
-    toast({
-      title: "Cliente cadastrado!",
-      description: `${newClient.name} foi adicionado com sucesso.`,
-    });
+    setIsLoading(true);
 
-    // Reset form
-    setNewClient({
-      name: "",
-      businessName: "",
-      email: "",
-      phone: "",
-      address: "",
-      billingDay: "15",
-      services: []
-    });
-    setIsNewClientDialogOpen(false);
-  };
+    try {
+      const response = await fetch('/api/admin/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newClient),
+      });
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "Ativo":
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Ativo</Badge>;
-      case "Pendente":
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Pendente</Badge>;
-      case "Inativo":
-        return <Badge className="bg-red-100 text-red-800 border-red-200">Inativo</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro desconhecido ao cadastrar cliente.');
+      }
+
+      toast({
+        title: "Cliente cadastrado!",
+        description: `${newClient.full_name} foi adicionado com sucesso.`,
+      });
+
+      setNewClient({
+        full_name: "", business_name: "", email: "", phone: "", address: "", billing_day: "15", services: []
+      });
+      setIsNewClientDialogOpen(false);
+      fetchClients(); // Refresh client list
+    } catch (error) {
+      toast({
+        title: "Erro ao cadastrar",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const filteredClients = clients.filter(client =>
-    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchTerm.toLowerCase())
+    client.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    client.business_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    client.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -205,8 +198,8 @@ const ClientManagement = () => {
                       <Label htmlFor="clientName">Nome do Responsável *</Label>
                       <Input
                         id="clientName"
-                        value={newClient.name}
-                        onChange={(e) => setNewClient({...newClient, name: e.target.value})}
+                        value={newClient.full_name}
+                        onChange={(e) => setNewClient({...newClient, full_name: e.target.value})}
                         placeholder="Nome completo"
                       />
                     </div>
@@ -215,8 +208,8 @@ const ClientManagement = () => {
                       <Label htmlFor="businessName">Nome da Empresa</Label>
                       <Input
                         id="businessName"
-                        value={newClient.businessName}
-                        onChange={(e) => setNewClient({...newClient, businessName: e.target.value})}
+                        value={newClient.business_name}
+                        onChange={(e) => setNewClient({...newClient, business_name: e.target.value})}
                         placeholder="Razão social ou nome fantasia"
                       />
                     </div>
@@ -259,7 +252,7 @@ const ClientManagement = () => {
                   {/* Billing */}
                   <div className="space-y-2">
                     <Label htmlFor="billingDay">Dia de Cobrança</Label>
-                    <Select value={newClient.billingDay} onValueChange={(value) => setNewClient({...newClient, billingDay: value})}>
+                    <Select value={newClient.billing_day} onValueChange={(value) => setNewClient({...newClient, billing_day: value})}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o dia" />
                       </SelectTrigger>
@@ -302,7 +295,7 @@ const ClientManagement = () => {
                           Total Mensal: R$ {calculateTotal().toFixed(2)}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Cobrança no dia {newClient.billingDay} de cada mês
+                          Cobrança no dia {newClient.billing_day} de cada mês
                         </p>
                       </div>
                     )}
@@ -315,8 +308,8 @@ const ClientManagement = () => {
                     >
                       Cancelar
                     </Button>
-                    <Button onClick={handleCreateClient} className="btn-hero">
-                      Cadastrar Cliente
+                    <Button onClick={handleCreateClient} className="btn-hero" disabled={isLoading}>
+                      {isLoading ? "Cadastrando..." : "Cadastrar Cliente"}
                     </Button>
                   </div>
                 </div>
@@ -374,12 +367,12 @@ const ClientManagement = () => {
                       <div className="flex items-center space-x-3 mb-2">
                         <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center">
                           <span className="text-white font-bold">
-                            {client.name.charAt(0)}
+                            {client.full_name.charAt(0)}
                           </span>
                         </div>
                         <div>
-                          <h3 className="font-semibold">{client.name}</h3>
-                          <p className="text-sm text-muted-foreground">{client.businessName}</p>
+                          <h3 className="font-semibold">{client.full_name}</h3>
+                          <p className="text-sm text-muted-foreground">{client.business_name}</p>
                         </div>
                         {getStatusBadge(client.status)}
                       </div>
@@ -391,21 +384,21 @@ const ClientManagement = () => {
                         </div>
                         <div className="flex items-center text-sm text-muted-foreground">
                           <Phone className="h-4 w-4 mr-1" />
-                          {client.phone}
+                          {client.phone || "N/A"}
                         </div>
                         <div className="flex items-center text-sm text-muted-foreground">
                           <DollarSign className="h-4 w-4 mr-1" />
-                          R$ {client.monthlyValue.toFixed(2)}/mês
+                          R$ {client.monthly_total?.toFixed(2) || "0.00"}/mês
                         </div>
                         <div className="flex items-center text-sm text-muted-foreground">
                           <Calendar className="h-4 w-4 mr-1" />
-                          Dia {client.billingDay}
+                          Dia {client.contracts?.[0]?.billing_day || "N/A"}
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between">
                         <div className="flex flex-wrap gap-1">
-                          {client.services.map((service, index) => (
+                          {client.services?.map((service, index) => (
                             <Badge key={index} variant="outline" className="text-xs">
                               {service}
                             </Badge>
@@ -413,7 +406,7 @@ const ClientManagement = () => {
                         </div>
                         
                         <div className="text-xs text-muted-foreground">
-                          Cliente desde {client.joinDate} • Último acesso: {client.lastLogin}
+                          {/* Dados de data de cadastro ou último acesso */}
                         </div>
                       </div>
                     </div>
@@ -431,7 +424,15 @@ const ClientManagement = () => {
               ))}
             </div>
 
-            {filteredClients.length === 0 && (
+            {isLoading && (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">
+                  Carregando clientes...
+                </p>
+              </div>
+            )}
+            
+            {!isLoading && filteredClients.length === 0 && (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">
                   {searchTerm ? "Nenhum cliente encontrado com esse termo de busca." : "Nenhum cliente cadastrado ainda."}
