@@ -1,203 +1,231 @@
 import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Users, Plus, Search, Edit, Eye, ArrowLeft, Calendar, DollarSign, Mail, Phone } from "lucide-react";
+import { ArrowLeft, Plus, Edit, Trash } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
-// Tipagens
-interface Service {
-  id: string;
+type Client = {
+  id?: string | number;
   name: string;
-  price: number;
-}
-
-interface Contract {
-  services: Service;
-  status: string;
-  monthly_total: number;
-  billing_day: string;
-}
-
-interface Client {
-  id: string;
-  full_name: string;
-  business_name?: string;
   email: string;
   phone?: string;
   address?: string;
-  contracts: Contract[];
-  services: string[];
-  monthly_total: number;
-  status: string;
-}
+  contracts?: {
+    id: string | number;
+    services?: { id: string | number; name: string }[];
+    monthly_total?: number;
+    status?: string;
+  }[];
+  status?: string;
+  services?: string;
+  monthly_total?: number;
+};
+
+const emptyClient: Client = {
+  name: "",
+  email: "",
+  phone: "",
+  address: "",
+  contracts: [],
+};
 
 const ClientManagement = () => {
   const { toast } = useToast();
-
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isNewClientDialogOpen, setIsNewClientDialogOpen] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
-  const [availableServices, setAvailableServices] = useState<Service[]>([]);
-  const [isFetching, setIsFetching] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isNewClientDialogOpen, setIsNewClientDialogOpen] = useState(false);
+  const [newClient, setNewClient] = useState<Client>({ ...emptyClient });
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
 
-  const [newClient, setNewClient] = useState({
-    full_name: "",
-    business_name: "",
-    email: "",
-    phone: "",
-    address: "",
-    billing_day: "15",
-    services: [] as string[]
-  });
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "active":
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Ativo</Badge>;
-      case "inactive":
-        return <Badge className="bg-red-100 text-red-800 border-red-200">Inativo</Badge>;
-      case "pending":
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Pendente</Badge>;
-      case "suspended":
-        return <Badge className="bg-orange-100 text-orange-800 border-orange-200">Suspenso</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const getClientServices = (contracts?: Contract[]) => {
-    return contracts?.map(contract => contract.services?.name || "") || [];
-  };
-
-  const calculateTotal = () => {
-    return newClient.services.reduce((total, serviceId) => {
-      const service = availableServices.find(s => s.id === serviceId);
-      return total + (service?.price || 0);
-    }, 0);
-  };
-
-  const handleServiceToggle = (serviceId: string) => {
-    setNewClient(prev => ({
-      ...prev,
-      services: prev.services.includes(serviceId)
-        ? prev.services.filter(s => s !== serviceId)
-        : [...prev.services, serviceId]
-    }));
-  };
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
   const fetchClients = useCallback(async () => {
-    setIsFetching(true);
+    setIsLoading(true);
     try {
-      const [clientsRes, servicesRes] = await Promise.all([
-        fetch('/api/admin/clients'),
-        fetch('/api/admin/services')
-      ]);
+      const response = await fetch(`${API_URL}/api/admin/clients`);
+      const data = await response.json();
 
-      const clientsData = await clientsRes.json();
-      const servicesData: Service[] = await servicesRes.json();
+      if (!response.ok) throw new Error(data.error || "Erro ao carregar clientes");
 
-      setClients(clientsData.map((client: Client) => ({
-        ...client,
-        services: getClientServices(client.contracts),
-        monthly_total: client.contracts?.reduce((acc: number, curr: Contract) => acc + curr.monthly_total, 0) || 0,
-        status: client.contracts?.find((c: Contract) => c.services?.name === "Mini-site com Manutenção Proativa")?.status || 'inactive'
-      })));
+      const mappedClients: Client[] = data.map((client: Client) => {
+        const services = client.contracts
+          ?.map(c => c.services?.map(s => s.name).join(", ") || "")
+          .join(", ") || "";
 
-      setAvailableServices(servicesData);
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+        const monthly_total = client.contracts
+          ?.reduce((acc, c) => acc + (c.monthly_total || 0), 0) || 0;
+
+        const status = client.contracts?.[0]?.status || "inactive";
+
+        return { ...client, services, monthly_total, status };
+      });
+
+      setClients(mappedClients);
+    } catch (error) {
       toast({
-        title: "Erro ao carregar dados",
-        description: errorMessage,
+        title: "Erro",
+        description: (error as Error).message,
         variant: "destructive",
       });
     } finally {
-      setIsFetching(false);
+      setIsLoading(false);
     }
-  }, [toast]);
+  }, [API_URL, toast]);
 
   useEffect(() => {
     fetchClients();
   }, [fetchClients]);
 
-  const handleCreateClient = async () => {
-    if (!newClient.full_name || !newClient.email || newClient.services.length === 0) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Preencha nome, email e selecione pelo menos um serviço.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleSaveClient = async () => {
+    const method = editingClient ? "PUT" : "POST";
+    const url = editingClient
+      ? `${API_URL}/api/admin/clients/${editingClient.id}`
+      : `${API_URL}/api/admin/clients`;
 
-    setIsCreating(true);
     try {
-      const response = await fetch('/api/admin/clients', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newClient),
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editingClient || newClient),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro desconhecido ao cadastrar cliente.');
+        throw new Error(errorData.error || "Erro ao salvar cliente");
       }
 
       toast({
-        title: "Cliente cadastrado!",
-        description: `${newClient.full_name} foi adicionado com sucesso.`,
+        title: "Sucesso!",
+        description: `Cliente ${editingClient ? "editado" : "cadastrado"} com sucesso.`,
       });
 
-      setNewClient({
-        full_name: "", business_name: "", email: "", phone: "", address: "", billing_day: "15", services: []
-      });
       setIsNewClientDialogOpen(false);
+      setEditingClient(null);
+      setNewClient({ ...emptyClient });
       fetchClients();
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+    } catch (error) {
       toast({
-        title: "Erro ao cadastrar",
-        description: errorMessage,
+        title: "Erro",
+        description: (error as Error).message,
         variant: "destructive",
       });
-    } finally {
-      setIsCreating(false);
     }
   };
 
-  const filteredClients = clients.filter(client =>
-    client.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.business_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleEditClick = (client: Client) => {
+    setEditingClient(client);
+    setNewClient(client);
+    setIsNewClientDialogOpen(true);
+  };
+
+  const handleDeleteClient = async (clientId: string | number | undefined) => {
+    if (clientId == null) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/admin/clients/${clientId}`, { method: "DELETE" });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Erro ao remover cliente");
+      }
+
+      toast({
+        title: "Cliente removido!",
+        description: "O cliente foi excluído com sucesso.",
+      });
+
+      fetchClients();
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: (error as Error).message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Função separada para renderizar clientes
+  const renderClients = () => {
+    if (isLoading) {
+      return (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Carregando clientes...</p>
+        </div>
+      );
+    }
+
+    if (clients.length === 0) {
+      return (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Nenhum cliente cadastrado ainda.</p>
+        </div>
+      );
+    }
+
+    return clients.map((client) => (
+      <Card key={client.id ?? client.name} className="card-elevated">
+        <CardContent className="p-6">
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <div className="flex items-center space-x-3 mb-2">
+                <h3 className="text-lg font-semibold">{client.name}</h3>
+                <Badge
+                  className={
+                    client.status === "active"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                  }
+                >
+                  {client.status === "active" ? "Ativo" : "Inativo"}
+                </Badge>
+              </div>
+              <p className="text-muted-foreground mb-2">{client.email}</p>
+              {client.phone && <p className="text-muted-foreground mb-2">📞 {client.phone}</p>}
+              {client.address && <p className="text-muted-foreground mb-2">🏠 {client.address}</p>}
+              {client.services && <p className="text-muted-foreground mb-2">Serviços: {client.services}</p>}
+              <p className="text-xl font-bold text-primary">Total Mensal: R$ {client.monthly_total?.toFixed(2)}</p>
+            </div>
+            <div className="flex space-x-2">
+              <Button size="sm" variant="outline" onClick={() => handleEditClick(client)}>
+                <Edit className="h-3 w-3" />
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => handleDeleteClient(client.id)}>
+                <Trash className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    ));
+  };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="bg-card border-b border-border">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
-              <Link 
+              <Link
                 to="/admin/dashboard"
                 className="flex items-center text-muted-foreground hover:text-primary transition-colors"
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Dashboard
               </Link>
-              <div className="w-px h-6 bg-border"></div>
               <h1 className="text-xl font-bold">Gestão de Clientes</h1>
             </div>
-
             <Dialog open={isNewClientDialogOpen} onOpenChange={setIsNewClientDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="btn-hero">
@@ -205,122 +233,63 @@ const ClientManagement = () => {
                   Novo Cliente
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Cadastrar Novo Cliente</DialogTitle>
+                  <DialogTitle>{editingClient ? "Editar" : "Adicionar"} Cliente</DialogTitle>
                   <DialogDescription>
-                    Preencha as informações do cliente e selecione os serviços contratados
+                    {editingClient
+                      ? "Altere os detalhes do cliente."
+                      : "Preencha os campos para adicionar um novo cliente."}
                   </DialogDescription>
                 </DialogHeader>
-
-                <div className="space-y-6">
-                  {/* Informações básicas */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="clientName">Nome do Responsável *</Label>
-                      <Input
-                        id="clientName"
-                        value={newClient.full_name}
-                        onChange={(e) => setNewClient({...newClient, full_name: e.target.value})}
-                        placeholder="Nome completo"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="businessName">Nome da Empresa</Label>
-                      <Input
-                        id="businessName"
-                        value={newClient.business_name}
-                        onChange={(e) => setNewClient({...newClient, business_name: e.target.value})}
-                        placeholder="Razão social ou nome fantasia"
-                      />
-                    </div>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nome</Label>
+                    <Input
+                      id="name"
+                      value={newClient.name}
+                      onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+                    />
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">E-mail *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={newClient.email}
-                        onChange={(e) => setNewClient({...newClient, email: e.target.value})}
-                        placeholder="email@cliente.com"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Telefone</Label>
-                      <Input
-                        id="phone"
-                        value={newClient.phone}
-                        onChange={(e) => setNewClient({...newClient, phone: e.target.value})}
-                        placeholder="(11) 9 9999-9999"
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      value={newClient.email}
+                      onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
+                    />
                   </div>
-
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Telefone</Label>
+                    <Input
+                      id="phone"
+                      value={newClient.phone}
+                      onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
+                    />
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="address">Endereço</Label>
                     <Textarea
                       id="address"
                       value={newClient.address}
-                      onChange={(e) => setNewClient({...newClient, address: e.target.value})}
-                      placeholder="Endereço completo"
-                      rows={2}
+                      onChange={(e) => setNewClient({ ...newClient, address: e.target.value })}
                     />
                   </div>
-
-                  {/* Cobrança */}
-                  <div className="space-y-2">
-                    <Label htmlFor="billingDay">Dia de Cobrança</Label>
-                    <Select value={newClient.billing_day} onValueChange={(value) => setNewClient({...newClient, billing_day: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o dia" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({length: 28}, (_, i) => i + 1).map(day => (
-                          <SelectItem key={day} value={day.toString()}>Dia {day}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Serviços */}
-                  <div className="space-y-4">
-                    <Label>Serviços Contratados *</Label>
-                    <div className="space-y-3">
-                      {availableServices.map(service => (
-                        <div key={service.id} className="flex items-center space-x-3 p-3 border border-border rounded-lg">
-                          <Checkbox
-                            id={service.id}
-                            checked={newClient.services.includes(service.id)}
-                            onCheckedChange={() => handleServiceToggle(service.id)}
-                          />
-                          <div className="flex-1">
-                            <Label htmlFor={service.id} className="cursor-pointer">{service.name}</Label>
-                          </div>
-                          <span className="font-medium">R$ {service.price.toFixed(2)}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {newClient.services.length > 0 && (
-                      <div className="p-3 bg-muted/50 rounded-lg">
-                        <p className="font-medium">Total Mensal: R$ {calculateTotal().toFixed(2)}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Cobrança no dia {newClient.billing_day} de cada mês
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex justify-end space-x-2 pt-4">
-                    <Button variant="outline" onClick={() => setIsNewClientDialogOpen(false)}>Cancelar</Button>
-                    <Button onClick={handleCreateClient} className="btn-hero" disabled={isCreating}>
-                      {isCreating ? "Cadastrando..." : "Cadastrar Cliente"}
-                    </Button>
-                  </div>
+                </div>
+                <div className="flex justify-end space-x-2 mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsNewClientDialogOpen(false);
+                      setEditingClient(null);
+                      setNewClient({ ...emptyClient });
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleSaveClient} className="btn-hero">
+                    {editingClient ? "Salvar Alterações" : "Adicionar Cliente"}
+                  </Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -329,107 +298,7 @@ const ClientManagement = () => {
       </header>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search e filtros */}
-        <Card className="card-elevated mb-6">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Buscar por nome, empresa ou email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Button variant="outline" className="btn-outline-brand">Filtros</Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Lista de clientes */}
-        <Card className="card-elevated">
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle className="flex items-center">
-                  <Users className="h-5 w-5 mr-2" />
-                  Clientes ({filteredClients.length})
-                </CardTitle>
-                <CardDescription>Gerencie todos os clientes da plataforma</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {filteredClients.map(client => (
-                <div key={client.id} className="p-4 border border-border rounded-lg hover:bg-muted/30 transition-colors">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center">
-                          <span className="text-white font-bold">{client.full_name.charAt(0)}</span>
-                        </div>
-                        <div>
-                          <h3 className="font-semibold">{client.full_name}</h3>
-                          <p className="text-sm text-muted-foreground">{client.business_name}</p>
-                        </div>
-                        {getStatusBadge(client.status)}
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-3">
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Mail className="h-4 w-4 mr-1" />
-                          {client.email}
-                        </div>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Phone className="h-4 w-4 mr-1" />
-                          {client.phone || "N/A"}
-                        </div>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <DollarSign className="h-4 w-4 mr-1" />
-                          R$ {client.monthly_total?.toFixed(2) || "0.00"}/mês
-                        </div>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Calendar className="h-4 w-4 mr-1" />
-                          Dia {client.contracts?.[0]?.billing_day || "N/A"}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex flex-wrap gap-1">
-                          {client.services?.map((service, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">{service}</Badge>
-                          ))}
-                        </div>
-                        <div className="text-xs text-muted-foreground">{/* Data de cadastro ou último acesso */}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex space-x-2 ml-4">
-                      <Button size="sm" variant="outline"><Eye className="h-3 w-3" /></Button>
-                      <Button size="sm" variant="outline"><Edit className="h-3 w-3" /></Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {isFetching && (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">Carregando clientes...</p>
-              </div>
-            )}
-
-            {!isFetching && filteredClients.length === 0 && (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  {searchTerm ? "Nenhum cliente encontrado com esse termo de busca." : "Nenhum cliente cadastrado ainda."}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <div className="grid gap-6">{renderClients()}</div>
       </div>
     </div>
   );
