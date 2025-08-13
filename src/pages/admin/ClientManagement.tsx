@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,31 +8,49 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { 
-  Users, 
-  Plus, 
-  Search, 
-  Edit, 
-  Eye, 
-  ArrowLeft,
-  Calendar,
-  DollarSign,
-  Mail,
-  Phone
-} from "lucide-react";
+import { Users, Plus, Search, Edit, Eye, ArrowLeft, Calendar, DollarSign, Mail, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { useCallback } from "react";
+
+// Tipagens
+interface Service {
+  id: string;
+  name: string;
+  price: number;
+}
+
+interface Contract {
+  services: Service;
+  status: string;
+  monthly_total: number;
+  billing_day: string;
+}
+
+interface Client {
+  id: string;
+  full_name: string;
+  business_name?: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  contracts: Contract[];
+  services: string[];
+  monthly_total: number;
+  status: string;
+}
 
 const ClientManagement = () => {
   const { toast } = useToast();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [isNewClientDialogOpen, setIsNewClientDialogOpen] = useState(false);
-  const [clients, setClients] = useState([]); // Array vazio para dados da API
-  const [availableServices, setAvailableServices] = useState([]); // Array vazio para dados da API
-  const [isLoading, setIsLoading] = useState(true);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [availableServices, setAvailableServices] = useState<Service[]>([]);
+  const [isFetching, setIsFetching] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+
   const [newClient, setNewClient] = useState({
-    full_name: "", // Nome do campo conforme a API
+    full_name: "",
     business_name: "",
     email: "",
     phone: "",
@@ -56,8 +74,8 @@ const ClientManagement = () => {
     }
   };
 
-  const getClientServices = (contracts) => {
-    return contracts.map(contract => contract.services.name);
+  const getClientServices = (contracts?: Contract[]) => {
+    return contracts?.map(contract => contract.services?.name || "") || [];
   };
 
   const calculateTotal = () => {
@@ -67,7 +85,7 @@ const ClientManagement = () => {
     }, 0);
   };
 
-  const handleServiceToggle = (serviceId) => {
+  const handleServiceToggle = (serviceId: string) => {
     setNewClient(prev => ({
       ...prev,
       services: prev.services.includes(serviceId)
@@ -77,30 +95,33 @@ const ClientManagement = () => {
   };
 
   const fetchClients = useCallback(async () => {
-    setIsLoading(true);
+    setIsFetching(true);
     try {
-      const clientsRes = await fetch('/api/admin/clients');
-      const servicesRes = await fetch('/api/services'); // Esta rota precisa ser criada
-      
+      const [clientsRes, servicesRes] = await Promise.all([
+        fetch('/api/admin/clients'),
+        fetch('/api/admin/services')
+      ]);
+
       const clientsData = await clientsRes.json();
-      const servicesData = await servicesRes.json();
-      
-      setClients(clientsData.map(client => ({
+      const servicesData: Service[] = await servicesRes.json();
+
+      setClients(clientsData.map((client: Client) => ({
         ...client,
         services: getClientServices(client.contracts),
-        monthly_total: client.contracts.reduce((acc, curr) => acc + curr.monthly_total, 0),
-        status: client.contracts.find(c => c.services.name === "Mini-site com Manutenção Proativa")?.status || 'inactive'
+        monthly_total: client.contracts?.reduce((acc: number, curr: Contract) => acc + curr.monthly_total, 0) || 0,
+        status: client.contracts?.find((c: Contract) => c.services?.name === "Mini-site com Manutenção Proativa")?.status || 'inactive'
       })));
 
       setAvailableServices(servicesData);
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
       toast({
         title: "Erro ao carregar dados",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsFetching(false);
     }
   }, [toast]);
 
@@ -118,8 +139,7 @@ const ClientManagement = () => {
       return;
     }
 
-    setIsLoading(true);
-
+    setIsCreating(true);
     try {
       const response = await fetch('/api/admin/clients', {
         method: 'POST',
@@ -141,15 +161,16 @@ const ClientManagement = () => {
         full_name: "", business_name: "", email: "", phone: "", address: "", billing_day: "15", services: []
       });
       setIsNewClientDialogOpen(false);
-      fetchClients(); // Refresh client list
-    } catch (error) {
+      fetchClients();
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
       toast({
         title: "Erro ao cadastrar",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsCreating(false);
     }
   };
 
@@ -176,7 +197,7 @@ const ClientManagement = () => {
               <div className="w-px h-6 bg-border"></div>
               <h1 className="text-xl font-bold">Gestão de Clientes</h1>
             </div>
-            
+
             <Dialog open={isNewClientDialogOpen} onOpenChange={setIsNewClientDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="btn-hero">
@@ -191,9 +212,9 @@ const ClientManagement = () => {
                     Preencha as informações do cliente e selecione os serviços contratados
                   </DialogDescription>
                 </DialogHeader>
-                
+
                 <div className="space-y-6">
-                  {/* Basic Information */}
+                  {/* Informações básicas */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="clientName">Nome do Responsável *</Label>
@@ -204,7 +225,7 @@ const ClientManagement = () => {
                         placeholder="Nome completo"
                       />
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="businessName">Nome da Empresa</Label>
                       <Input
@@ -227,7 +248,7 @@ const ClientManagement = () => {
                         placeholder="email@cliente.com"
                       />
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="phone">Telefone</Label>
                       <Input
@@ -250,7 +271,7 @@ const ClientManagement = () => {
                     />
                   </div>
 
-                  {/* Billing */}
+                  {/* Cobrança */}
                   <div className="space-y-2">
                     <Label htmlFor="billingDay">Dia de Cobrança</Label>
                     <Select value={newClient.billing_day} onValueChange={(value) => setNewClient({...newClient, billing_day: value})}>
@@ -259,15 +280,13 @@ const ClientManagement = () => {
                       </SelectTrigger>
                       <SelectContent>
                         {Array.from({length: 28}, (_, i) => i + 1).map(day => (
-                          <SelectItem key={day} value={day.toString()}>
-                            Dia {day}
-                          </SelectItem>
+                          <SelectItem key={day} value={day.toString()}>Dia {day}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* Services */}
+                  {/* Serviços */}
                   <div className="space-y-4">
                     <Label>Serviços Contratados *</Label>
                     <div className="space-y-3">
@@ -279,22 +298,16 @@ const ClientManagement = () => {
                             onCheckedChange={() => handleServiceToggle(service.id)}
                           />
                           <div className="flex-1">
-                            <Label htmlFor={service.id} className="cursor-pointer">
-                              {service.name}
-                            </Label>
+                            <Label htmlFor={service.id} className="cursor-pointer">{service.name}</Label>
                           </div>
-                          <span className="font-medium">
-                            R$ {service.price.toFixed(2)}
-                          </span>
+                          <span className="font-medium">R$ {service.price.toFixed(2)}</span>
                         </div>
                       ))}
                     </div>
-                    
+
                     {newClient.services.length > 0 && (
                       <div className="p-3 bg-muted/50 rounded-lg">
-                        <p className="font-medium">
-                          Total Mensal: R$ {calculateTotal().toFixed(2)}
-                        </p>
+                        <p className="font-medium">Total Mensal: R$ {calculateTotal().toFixed(2)}</p>
                         <p className="text-sm text-muted-foreground">
                           Cobrança no dia {newClient.billing_day} de cada mês
                         </p>
@@ -303,14 +316,9 @@ const ClientManagement = () => {
                   </div>
 
                   <div className="flex justify-end space-x-2 pt-4">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setIsNewClientDialogOpen(false)}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button onClick={handleCreateClient} className="btn-hero" disabled={isLoading}>
-                      {isLoading ? "Cadastrando..." : "Cadastrar Cliente"}
+                    <Button variant="outline" onClick={() => setIsNewClientDialogOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleCreateClient} className="btn-hero" disabled={isCreating}>
+                      {isCreating ? "Cadastrando..." : "Cadastrar Cliente"}
                     </Button>
                   </div>
                 </div>
@@ -321,7 +329,7 @@ const ClientManagement = () => {
       </header>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search and Filters */}
+        {/* Search e filtros */}
         <Card className="card-elevated mb-6">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-4">
@@ -334,14 +342,12 @@ const ClientManagement = () => {
                   className="pl-10"
                 />
               </div>
-              <Button variant="outline" className="btn-outline-brand">
-                Filtros
-              </Button>
+              <Button variant="outline" className="btn-outline-brand">Filtros</Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Clients Table */}
+        {/* Lista de clientes */}
         <Card className="card-elevated">
           <CardHeader>
             <div className="flex justify-between items-center">
@@ -350,26 +356,19 @@ const ClientManagement = () => {
                   <Users className="h-5 w-5 mr-2" />
                   Clientes ({filteredClients.length})
                 </CardTitle>
-                <CardDescription>
-                  Gerencie todos os clientes da plataforma
-                </CardDescription>
+                <CardDescription>Gerencie todos os clientes da plataforma</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {filteredClients.map((client) => (
-                <div 
-                  key={client.id}
-                  className="p-4 border border-border rounded-lg hover:bg-muted/30 transition-colors"
-                >
+              {filteredClients.map(client => (
+                <div key={client.id} className="p-4 border border-border rounded-lg hover:bg-muted/30 transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
                         <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center">
-                          <span className="text-white font-bold">
-                            {client.full_name.charAt(0)}
-                          </span>
+                          <span className="text-white font-bold">{client.full_name.charAt(0)}</span>
                         </div>
                         <div>
                           <h3 className="font-semibold">{client.full_name}</h3>
@@ -377,7 +376,7 @@ const ClientManagement = () => {
                         </div>
                         {getStatusBadge(client.status)}
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-3">
                         <div className="flex items-center text-sm text-muted-foreground">
                           <Mail className="h-4 w-4 mr-1" />
@@ -400,40 +399,29 @@ const ClientManagement = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex flex-wrap gap-1">
                           {client.services?.map((service, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {service}
-                            </Badge>
+                            <Badge key={index} variant="outline" className="text-xs">{service}</Badge>
                           ))}
                         </div>
-                        
-                        <div className="text-xs text-muted-foreground">
-                          {/* Dados de data de cadastro ou último acesso */}
-                        </div>
+                        <div className="text-xs text-muted-foreground">{/* Data de cadastro ou último acesso */}</div>
                       </div>
                     </div>
 
                     <div className="flex space-x-2 ml-4">
-                      <Button size="sm" variant="outline">
-                        <Eye className="h-3 w-3" />
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <Edit className="h-3 w-3" />
-                      </Button>
+                      <Button size="sm" variant="outline"><Eye className="h-3 w-3" /></Button>
+                      <Button size="sm" variant="outline"><Edit className="h-3 w-3" /></Button>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            {isLoading && (
+            {isFetching && (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  Carregando clientes...
-                </p>
+                <p className="text-muted-foreground">Carregando clientes...</p>
               </div>
             )}
-            
-            {!isLoading && filteredClients.length === 0 && (
+
+            {!isFetching && filteredClients.length === 0 && (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">
                   {searchTerm ? "Nenhum cliente encontrado com esse termo de busca." : "Nenhum cliente cadastrado ainda."}
