@@ -17,28 +17,36 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-type Client = {
-  id?: string | number;
+type Service = {
+  id: string | number;
   name: string;
-  email: string;
-  phone?: string;
-  address?: string;
-  contracts?: {
-    id: string | number;
-    services?: { id: string | number; name: string }[];
-    monthly_total?: number;
-    status?: string;
-  }[];
+  type?: string;
+};
+
+type Contract = {
+  id: string | number;
+  service_id: string | number;
+  service?: Service | null;
+  billing_day?: string;
   status?: string;
-  services?: string;
   monthly_total?: number;
 };
 
+type Client = {
+  id: string | number;
+  full_name: string;
+  business_name?: string;
+  phone?: string;
+  user_id: string;
+  email: string;
+  contracts?: Contract[];
+};
+
 const emptyClient: Client = {
-  name: "",
+  id: "",
+  full_name: "",
+  user_id: "",
   email: "",
-  phone: "",
-  address: "",
   contracts: [],
 };
 
@@ -50,30 +58,21 @@ const ClientManagement = () => {
   const [newClient, setNewClient] = useState<Client>({ ...emptyClient });
   const [editingClient, setEditingClient] = useState<Client | null>(null);
 
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api/admin/clients";
 
   const fetchClients = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/admin/clients`);
-      const data = await response.json();
+      const res = await fetch(API_URL);
+      if (!res.ok) throw new Error("Erro ao carregar clientes");
+      const data: Client[] = await res.json();
 
-      if (!response.ok) throw new Error(data.error || "Erro ao carregar clientes");
-
-      const mappedClients: Client[] = data.map((client: Client) => {
-        const services = client.contracts
-          ?.map(c => c.services?.map(s => s.name).join(", ") || "")
-          .join(", ") || "";
-
-        const monthly_total = client.contracts
-          ?.reduce((acc, c) => acc + (c.monthly_total || 0), 0) || 0;
-
-        const status = client.contracts?.[0]?.status || "inactive";
-
-        return { ...client, services, monthly_total, status };
-      });
-
-      setClients(mappedClients);
+      setClients(
+        data.map(client => ({
+          ...client,
+          contracts: client.contracts || [],
+        }))
+      );
     } catch (error) {
       toast({
         title: "Erro",
@@ -89,21 +88,40 @@ const ClientManagement = () => {
     fetchClients();
   }, [fetchClients]);
 
-  const handleSaveClient = async () => {
-    const method = editingClient ? "PUT" : "POST";
-    const url = editingClient
-      ? `${API_URL}/api/admin/clients/${editingClient.id}`
-      : `${API_URL}/api/admin/clients`;
+  const handleEditClick = (client: Client) => {
+    setEditingClient(client);
+    setNewClient(client);
+    setIsNewClientDialogOpen(true);
+  };
 
+  const handleDeleteClient = async (clientId: string | number) => {
     try {
-      const response = await fetch(url, {
+      const res = await fetch(`${API_URL}/clients/${clientId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Erro ao remover cliente");
+      toast({ title: "Cliente removido!", description: "Cliente excluído com sucesso." });
+      fetchClients();
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: (error as Error).message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveClient = async () => {
+    try {
+      const method = editingClient ? "PUT" : "POST";
+      const url = editingClient ? `${API_URL}/clients/${editingClient.id}` : `${API_URL}/clients`;
+
+      const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editingClient || newClient),
+        body: JSON.stringify(newClient),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!res.ok) {
+        const errorData = await res.json();
         throw new Error(errorData.error || "Erro ao salvar cliente");
       }
 
@@ -125,90 +143,66 @@ const ClientManagement = () => {
     }
   };
 
-  const handleEditClick = (client: Client) => {
-    setEditingClient(client);
-    setNewClient(client);
-    setIsNewClientDialogOpen(true);
-  };
+  // ===================== COMPONENTES DE RENDER =====================
+  const renderClientCard = (client: Client) => (
+    <Card key={client.id} className="card-elevated">
+      <CardContent className="p-6">
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <div className="flex items-center space-x-3 mb-2">
+              <h3 className="text-lg font-semibold">{client.full_name}</h3>
+              <Badge
+                className={
+                  client.contracts?.some(c => c.status === "active")
+                    ? "bg-green-100 text-green-800"
+                    : "bg-red-100 text-red-800"
+                }
+              >
+                {client.contracts?.some(c => c.status === "active") ? "Ativo" : "Inativo"}
+              </Badge>
+            </div>
+            <p className="text-muted-foreground mb-2">{client.email}</p>
+            {client.phone && <p className="text-muted-foreground mb-2">📞 {client.phone}</p>}
+            {client.business_name && <p className="text-muted-foreground mb-2">🏢 {client.business_name}</p>}
+            {client.contracts && client.contracts.length > 0 && (
+              <p className="text-muted-foreground mb-2">
+                Serviços: {client.contracts.map(c => c.service?.name).join(", ")}
+              </p>
+            )}
+            <p className="text-xl font-bold text-primary">
+              Total Mensal: R${" "}
+              {client.contracts?.reduce((acc, c) => acc + (c.monthly_total || 0), 0).toFixed(2)}
+            </p>
+          </div>
+          <div className="flex space-x-2">
+            <Button size="sm" variant="outline" onClick={() => handleEditClick(client)}>
+              <Edit className="h-3 w-3" />
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => handleDeleteClient(client.id)}>
+              <Trash className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
-  const handleDeleteClient = async (clientId: string | number | undefined) => {
-    if (clientId == null) return;
-
-    try {
-      const response = await fetch(`${API_URL}/api/admin/clients/${clientId}`, { method: "DELETE" });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Erro ao remover cliente");
-      }
-
-      toast({
-        title: "Cliente removido!",
-        description: "O cliente foi excluído com sucesso.",
-      });
-
-      fetchClients();
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: (error as Error).message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Função separada para renderizar clientes
-  const renderClients = () => {
-    if (isLoading) {
+  const renderClientsList = () => {
+    if (isLoading)
       return (
         <div className="text-center py-8">
           <p className="text-muted-foreground">Carregando clientes...</p>
         </div>
       );
-    }
 
-    if (clients.length === 0) {
+    if (clients.length === 0)
       return (
         <div className="text-center py-8">
           <p className="text-muted-foreground">Nenhum cliente cadastrado ainda.</p>
         </div>
       );
-    }
 
-    return clients.map((client) => (
-      <Card key={client.id ?? client.name} className="card-elevated">
-        <CardContent className="p-6">
-          <div className="flex justify-between items-start">
-            <div className="flex-1">
-              <div className="flex items-center space-x-3 mb-2">
-                <h3 className="text-lg font-semibold">{client.name}</h3>
-                <Badge
-                  className={
-                    client.status === "active"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }
-                >
-                  {client.status === "active" ? "Ativo" : "Inativo"}
-                </Badge>
-              </div>
-              <p className="text-muted-foreground mb-2">{client.email}</p>
-              {client.phone && <p className="text-muted-foreground mb-2">📞 {client.phone}</p>}
-              {client.address && <p className="text-muted-foreground mb-2">🏠 {client.address}</p>}
-              {client.services && <p className="text-muted-foreground mb-2">Serviços: {client.services}</p>}
-              <p className="text-xl font-bold text-primary">Total Mensal: R$ {client.monthly_total?.toFixed(2)}</p>
-            </div>
-            <div className="flex space-x-2">
-              <Button size="sm" variant="outline" onClick={() => handleEditClick(client)}>
-                <Edit className="h-3 w-3" />
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => handleDeleteClient(client.id)}>
-                <Trash className="h-3 w-3" />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    ));
+    return clients.map(renderClientCard);
   };
 
   return (
@@ -217,15 +211,13 @@ const ClientManagement = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
-              <Link
-                to="/admin/dashboard"
-                className="flex items-center text-muted-foreground hover:text-primary transition-colors"
-              >
+              <Link to="/admin/dashboard" className="flex items-center text-muted-foreground hover:text-primary transition-colors">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Dashboard
               </Link>
               <h1 className="text-xl font-bold">Gestão de Clientes</h1>
             </div>
+
             <Dialog open={isNewClientDialogOpen} onOpenChange={setIsNewClientDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="btn-hero">
@@ -237,18 +229,17 @@ const ClientManagement = () => {
                 <DialogHeader>
                   <DialogTitle>{editingClient ? "Editar" : "Adicionar"} Cliente</DialogTitle>
                   <DialogDescription>
-                    {editingClient
-                      ? "Altere os detalhes do cliente."
-                      : "Preencha os campos para adicionar um novo cliente."}
+                    {editingClient ? "Altere os detalhes do cliente." : "Preencha os campos para adicionar um novo cliente."}
                   </DialogDescription>
                 </DialogHeader>
+
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Nome</Label>
                     <Input
                       id="name"
-                      value={newClient.name}
-                      onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+                      value={newClient.full_name}
+                      onChange={e => setNewClient({ ...newClient, full_name: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
@@ -256,26 +247,27 @@ const ClientManagement = () => {
                     <Input
                       id="email"
                       value={newClient.email}
-                      onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
+                      onChange={e => setNewClient({ ...newClient, email: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone">Telefone</Label>
                     <Input
                       id="phone"
-                      value={newClient.phone}
-                      onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
+                      value={newClient.phone || ""}
+                      onChange={e => setNewClient({ ...newClient, phone: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="address">Endereço</Label>
-                    <Textarea
-                      id="address"
-                      value={newClient.address}
-                      onChange={(e) => setNewClient({ ...newClient, address: e.target.value })}
+                    <Label htmlFor="business_name">Empresa</Label>
+                    <Input
+                      id="business_name"
+                      value={newClient.business_name || ""}
+                      onChange={e => setNewClient({ ...newClient, business_name: e.target.value })}
                     />
                   </div>
                 </div>
+
                 <div className="flex justify-end space-x-2 mt-4">
                   <Button
                     variant="outline"
@@ -298,7 +290,7 @@ const ClientManagement = () => {
       </header>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid gap-6">{renderClients()}</div>
+        <div className="grid gap-6">{renderClientsList()}</div>
       </div>
     </div>
   );
