@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -8,14 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Plus, Edit, Trash } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
@@ -46,12 +39,10 @@ const ServiceManagement = () => {
   const [newService, setNewService] = useState<Service>({ ...emptyService });
   const [editingService, setEditingService] = useState<Service | null>(null);
 
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
-
   const fetchServices = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/services`);
+      const response = await fetch("/api/admin/services");
       const data = await response.json();
       if (response.ok) {
         setServices(data);
@@ -67,7 +58,7 @@ const ServiceManagement = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [API_URL, toast]);
+  }, [toast]);
 
   useEffect(() => {
     fetchServices();
@@ -75,10 +66,13 @@ const ServiceManagement = () => {
 
   const handleSaveService = async () => {
     const method = editingService ? "PUT" : "POST";
-    const url = editingService
-      ? `${API_URL}/api/services/${editingService.id}`
-      : `${API_URL}/api/services`;
-    const serviceData = editingService ? editingService : newService;
+    const url = editingService ? `/api/admin/services/${editingService.id}` : "/api/admin/services";
+    
+    // Garantimos que o ID não seja enviado em um POST para evitar erros
+    const serviceData = editingService ? { ...editingService } : { ...newService };
+    if (method === 'POST') {
+      delete serviceData.id;
+    }
 
     try {
       const response = await fetch(url, {
@@ -119,7 +113,7 @@ const ServiceManagement = () => {
   const handleDeleteService = async (serviceId: string | number | undefined) => {
     if (serviceId == null) return;
     try {
-      const response = await fetch(`${API_URL}/api/services/${serviceId}`, {
+      const response = await fetch(`/api/admin/services/${serviceId}`, {
         method: "DELETE",
       });
 
@@ -149,7 +143,10 @@ const ServiceManagement = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
-              <Link to="/admin/dashboard" className="flex items-center text-muted-foreground hover:text-primary transition-colors">
+              <Link
+                to="/admin/dashboard"
+                className="flex items-center text-muted-foreground hover:text-primary transition-colors"
+              >
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Dashboard
               </Link>
@@ -166,7 +163,9 @@ const ServiceManagement = () => {
                 <DialogHeader>
                   <DialogTitle>{editingService ? "Editar" : "Adicionar"} Serviço</DialogTitle>
                   <DialogDescription>
-                    {editingService ? "Altere os detalhes do serviço." : "Preencha os campos para adicionar um novo serviço."}
+                    {editingService
+                      ? "Altere os detalhes do serviço."
+                      : "Preencha os campos para adicionar um novo serviço."}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -215,7 +214,7 @@ const ServiceManagement = () => {
                       <Input
                         id="price"
                         type="number"
-                        value={Number.isFinite(newService.price) ? newService.price : 0}
+                        value={Number.isFinite(newService.price) ? newService.price : ''}
                         onChange={(e) =>
                           setNewService({
                             ...newService,

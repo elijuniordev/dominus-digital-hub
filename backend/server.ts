@@ -1,4 +1,4 @@
-// backend/server.ts
+// server.ts
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -17,9 +17,8 @@ app.use(cors({
 app.use(express.json());
 
 // Rotas da API
-// Agora cada router tem seu próprio caminho consistente
-app.use('/api/admin/clients', clientsRouter);     // Para clientes
-app.use('/api/admin/services', servicesRouter);   // Para serviços
+app.use('/api/admin/clients', clientsRouter);
+app.use('/api/admin/services', servicesRouter);
 
 app.get('/', (req, res) => {
   res.send('API da Dominus Digital rodando!');
