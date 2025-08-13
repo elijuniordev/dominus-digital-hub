@@ -141,13 +141,21 @@ END:VCARD`;
 
   const getCurrentStatus = () => {
     const now = new Date();
-    const currentDay = now.toLocaleDateString('pt-BR', { weekday: 'long' });
     const currentTime = now.toTimeString().slice(0, 5);
     
-    const dayKey = currentDay.charAt(0).toUpperCase() + currentDay.slice(1);
+    // Map day of week to Portuguese day names used in our data
+    const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    const dayKey = dayNames[now.getDay()];
+    
     const todayHours = clientData.hours[dayKey as keyof typeof clientData.hours];
     
-    if (todayHours === "Fechado") {
+    // Safety check: if todayHours is undefined or "Fechado"
+    if (!todayHours || todayHours === "Fechado") {
+      return { status: "Fechado", color: "destructive" };
+    }
+    
+    // Safety check: ensure todayHours contains " - " before splitting
+    if (!todayHours.includes(" - ")) {
       return { status: "Fechado", color: "destructive" };
     }
     
