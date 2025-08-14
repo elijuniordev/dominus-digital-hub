@@ -1,178 +1,162 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Loader2, CheckCircle } from "lucide-react";
 
-// Supondo que você tenha uma API em '/api/auth'
-const API_URL = '/api/auth';
-
-const ClientLogin = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+const ClientActivation = () => {
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+  // Estados do formulário
+  const [activationKey, setActivationKey] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
+  // Estados de controle da UI
+  const [isActivating, setIsActivating] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [error, setError] = useState('');
+
+  // Efeito para ler a chave de ativação da URL assim que a página carregar
+  useEffect(() => {
+    const keyFromUrl = searchParams.get('key');
+    if (keyFromUrl) {
+      setActivationKey(keyFromUrl);
+    }
+  }, [searchParams]);
+
+  const handleActivation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    // Validação no frontend
+    if (!activationKey) {
+      setError('A chave de ativação é obrigatória.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Sua senha deve ter no mínimo 6 caracteres.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('As senhas não coincidem.');
+      return;
+    }
+
+    setIsActivating(true);
     try {
-      const response = await fetch(`${API_URL}/login`, {
+      const response = await fetch('/api/public/activate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          activation_key: activationKey,
+          password: password,
+        }),
       });
-
-      const data = await response.json();
 
       if (!response.ok) {
-        toast({
-          title: "Erro no login",
-          description: data.error,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Login realizado com sucesso!",
-          description: "Redirecionando para o dashboard...",
-        });
-        
-        // Redirecionamento com base no perfil do usuário, como discutimos
-        if (data.role === 'admin') {
-          navigate('/admin/dashboard');
-        } else {
-          navigate('/portal/dashboard');
-        }
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Não foi possível ativar a conta.');
       }
-    } catch (error) {
+
+      // Se a ativação for bem-sucedida
+      setIsSuccess(true);
       toast({
-        title: "Erro de conexão",
-        description: "Não foi possível conectar ao servidor. Tente novamente.",
-        variant: "destructive",
+        title: "Conta Ativada com Sucesso!",
+        description: "Você já pode fazer o login com sua nova senha.",
       });
+
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
+      setError(errorMessage);
     } finally {
-      setIsLoading(false);
+      setIsActivating(false);
     }
   };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-6">
-        {/* Back Button */}
-        <Link 
-          to="/" 
-          className="inline-flex items-center text-muted-foreground hover:text-primary transition-colors"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar ao site
-        </Link>
-
-        {/* Logo */}
-        <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary to-secondary rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold text-2xl">D</span>
-          </div>
-          <h1 className="text-2xl font-bold text-gradient-brand">Portal do Cliente</h1>
-          <p className="text-muted-foreground">Dominus Digital</p>
-        </div>
-
-        {/* Login Form */}
-        <Card className="card-elevated">
-          <CardHeader className="text-center">
-            <CardTitle>Fazer Login</CardTitle>
-            <CardDescription>
-              Acesse seu painel de controle para gerenciar seus serviços
-            </CardDescription>
+  
+  // Se a ativação foi um sucesso, exibe uma mensagem de confirmação
+  if (isSuccess) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-muted/40">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <CardTitle className="text-2xl">Ativação Concluída!</CardTitle>
+            <CardDescription>Sua conta foi ativada e sua senha definida com sucesso.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Sua senha"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Link 
-                  to="#" 
-                  className="text-sm text-primary hover:underline"
-                >
-                  Esqueci minha senha
-                </Link>
-                <Link 
-                  to="/portal/ativacao" 
-                  className="text-sm text-secondary hover:underline"
-                >
-                  Ativar conta
-                </Link>
-              </div>
-
-              <Button 
-                type="submit" 
-                className="btn-hero w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? "Entrando..." : "Entrar no Portal"}
-              </Button>
-            </form>
+            <CheckCircle className="mx-auto h-16 w-16 text-green-500 mb-4" />
+            <p className="text-muted-foreground mb-6">
+              Agora você pode acessar o portal do cliente para gerenciar seus serviços.
+            </p>
+            <Button asChild className="w-full btn-hero">
+              <Link to="/portal/login">Ir para o Login</Link>
+            </Button>
           </CardContent>
         </Card>
-
-        {/* Support Info */}
-        <div className="text-center text-sm text-muted-foreground">
-          <p>Precisa de ajuda?</p>
-          <p>
-            Entre em contato: 
-            <a 
-              href="mailto:suporte@dominusdigital.com" 
-              className="text-primary hover:underline ml-1"
-            >
-              suporte@dominusdigital.com
-            </a>
-          </p>
-        </div>
       </div>
+    );
+  }
+
+  // Formulário de ativação
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-muted/40">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="text-2xl">Ative sua Conta</CardTitle>
+          <CardDescription>
+            Defina uma senha para acessar o Portal do Cliente pela primeira vez.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleActivation} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="activation-key">Chave de Ativação</Label>
+              <Input
+                id="activation-key"
+                type="text"
+                placeholder="Cole sua chave de ativação aqui"
+                value={activationKey}
+                onChange={(e) => setActivationKey(e.target.value)}
+                required
+                // Se a chave veio da URL, o campo fica apenas para leitura
+                readOnly={!!searchParams.get('key')}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Nova Senha</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirme a Senha</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+            </div>
+            {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+            <Button type="submit" className="w-full btn-hero" disabled={isActivating}>
+              {isActivating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Ativar Conta
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };
 
-export default ClientLogin;
+export default ClientActivation;

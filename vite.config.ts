@@ -1,3 +1,4 @@
+// vite.config.ts
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
@@ -10,10 +11,10 @@ export default defineConfig({
     },
   },
   server: {
-    // Adiciona a configuração de proxy
+    // Proxy para redirecionar requisições /api para o backend
     proxy: {
       '/api': {
-        target: 'http://localhost:3000', // URL e porta do seu servidor de backend
+        target: 'http://localhost:3000', // URL do seu servidor de backend
         changeOrigin: true,        
       },
     },
