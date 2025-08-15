@@ -1,21 +1,18 @@
 import axios from 'axios';
 import { supabase } from '@/integrations/supabase/client';
 
-// CORREÇÃO: Não precisamos mais da URL completa. O proxy do Vite cuida disso.
-// A baseURL agora é simplesmente '/', fazendo com que as chamadas sejam relativas.
+// A baseURL agora é simplesmente '/'. As chamadas serão relativas
+// (ex: /api/public/blog) e o proxy do Vite fará o resto.
 const apiClient = axios.create({
   baseURL: '/',
 });
 
-// O interceptor de autenticação continua igual e funcionando
+// O interceptor de autenticação continua igual, garantindo que o token seja enviado.
 apiClient.interceptors.request.use(
   async (config) => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      const token = session.access_token;
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+    if (session?.access_token) {
+      config.headers.Authorization = `Bearer ${session.access_token}`;
     }
     return config;
   },
