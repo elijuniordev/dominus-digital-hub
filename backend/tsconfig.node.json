@@ -1,5 +1,6 @@
 {
-  "extends": "../../tsconfig.json",
+  // CORRIGIDO: O caminho para o arquivo base é '../tsconfig.json', não '../../'
+  "extends": "../tsconfig.json", 
   "compilerOptions": {
     "composite": true,
     "skipLibCheck": true,
@@ -7,9 +8,9 @@
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "strict": true,
-    "baseUrl": "../", // CORREÇÃO: Define o diretório base para a raiz do projeto.
+    "baseUrl": "../",
     "paths": {
-      "@/*": ["src/*"] // CORRIGIDO: O caminho agora é relativo ao novo 'baseUrl'.
+      "@/*": ["src/*"]
     }
   },
   "include": ["vite.config.ts"]

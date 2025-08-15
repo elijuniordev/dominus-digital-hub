@@ -1,9 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, MessageCircle } from "lucide-react"; // Adicionado ícone de mensagem
+import { ArrowRight, MessageCircle } from "lucide-react";
 
 export const HeroSection = () => {
-  // --- LÓGICA DO WHATSAPP ---
-  const whatsappNumber = "5511972370718"; // Seu número em formato internacional
+  const whatsappNumber = "5511972370718";
   const whatsappMessage = encodeURIComponent(
     "Olá! Gostaria de saber mais sobre as soluções da Dominus Digital."
   );
@@ -22,17 +21,13 @@ export const HeroSection = () => {
             Do planejamento à execução, somos seu parceiro completo no mundo digital.
           </p>
           
-          {/* --- BOTÕES CORRIGIDOS E APRIMORADOS --- */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {/* Botão Principal: Leva direto para o WhatsApp */}
             <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
               <Button className="btn-hero px-8 py-3 text-lg w-full sm:w-auto">
                 <MessageCircle className="mr-2 h-5 w-5" />
                 Fale Conosco no WhatsApp
               </Button>
             </a>
-
-            {/* Botão Secundário: Leva para a seção de serviços na mesma página */}
             <a href="/#servicos">
               <Button variant="outline" className="btn-outline-brand px-8 py-3 text-lg w-full sm:w-auto">
                 Conheça Nossos Serviços
@@ -42,7 +37,6 @@ export const HeroSection = () => {
         </div>
       </div>
       
-      {/* Elementos decorativos */}
       <div className="absolute top-1/4 left-1/4 w-20 h-20 bg-primary/20 rounded-full animate-float"></div>
       <div className="absolute top-1/3 right-1/4 w-16 h-16 bg-secondary/20 rounded-full animate-float" style={{ animationDelay: '2s' }}></div>
       <div className="absolute bottom-1/4 left-1/3 w-12 h-12 bg-primary/30 rounded-full animate-float" style={{ animationDelay: '4s' }}></div>

@@ -1,6 +1,6 @@
 import { Outlet } from "react-router-dom";
-import PublicHeader from "@/components/layout/PublicHeader"; // CORRIGIDO: Importação padrão
-import PublicFooter from "@/components/layout/PublicFooter"; // CORRIGIDO: Importação padrão
+import PublicHeader from "@/components/layout/PublicHeader";
+import PublicFooter from "@/components/layout/PublicFooter";
 
 const PublicLayout = () => {
   return (
