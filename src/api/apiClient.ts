@@ -1,9 +1,8 @@
 import axios from 'axios';
 import { supabase } from '@/integrations/supabase/client';
 
-// Usando 'export const' para criar uma exportação nomeada, que é mais robusta contra erros de cache.
 export const apiClient = axios.create({
-  baseURL: '/', // A baseURL é relativa, o proxy do Vite configurado no vite.config.ts cuida do resto.
+  baseURL: '/', // Correto para funcionar com o proxy
 });
 
 apiClient.interceptors.request.use(

@@ -2,11 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "composite": true,
-    "skipLibCheck": true,
     "module": "ESNext",
-    "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true,
-    // ADICIONADO: Garante que este arquivo também não gere output, resolvendo o aviso.
     "noEmit": true
   },
   "include": ["vite.config.ts"]

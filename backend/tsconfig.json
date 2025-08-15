@@ -6,10 +6,6 @@
     "baseUrl": "..",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "composite": true,
-    "skipLibCheck": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
     "sourceMap": true,
     "paths": {
       "@backend/*": ["backend/*"],
@@ -17,8 +13,9 @@
     }
   },
   "include": [
-    "backend/**/*.ts",      // Inclui todo o código do backend
-    "src/lib/icon-map.ts" // Inclui o arquivo compartilhado
+    // CORRIGIDO: Agora aponta para os arquivos corretos
+    "**/*.ts",
+    "../src/lib/icon-map.ts"
   ],
   "exclude": [
     "node_modules",
