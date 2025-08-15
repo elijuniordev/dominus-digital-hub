@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 // PASSO 1: Importar nosso cliente singleton centralizado.
 // O caminho pode precisar de ajuste dependendo da sua estrutura de pastas.
-import supabaseServerClient from '@/lib/supabase-server';
+import supabaseServerClient from '../../lib/supabase-server.js';
 
 const router = Router();
 

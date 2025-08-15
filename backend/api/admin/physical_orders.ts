@@ -1,18 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
 import { Router, Request, Response } from 'express';
+// ADICIONADO: Importa nosso cliente Supabase centralizado.
+import supabaseServerClient from '../../lib/supabase-server.js';
+
+// REMOVIDO: A inicialização local do Supabase foi retirada.
 
 const router = Router();
-
-// Inicialização segura do cliente Supabase
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('As variáveis de ambiente do Supabase não estão configuradas no backend.');
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
 
 /**
  * @route GET /api/admin/physical-orders
@@ -20,7 +12,8 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const { data, error } = await supabase
+    // ALTERADO: Usando o cliente centralizado
+    const { data, error } = await supabaseServerClient
       .from('physical_orders')
       .select(`
         id,
@@ -54,7 +47,8 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     try {
-        const { data, error } = await supabase
+        // ALTERADO: Usando o cliente centralizado
+        const { data, error } = await supabaseServerClient
             .from('physical_orders')
             .insert({
                 client_id: client_id,
@@ -93,7 +87,8 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (tracking_code !== undefined) updateData.tracking_code = tracking_code;
 
     try {
-        const { data, error } = await supabase
+        // ALTERADO: Usando o cliente centralizado
+        const { data, error } = await supabaseServerClient
             .from('physical_orders')
             .update(updateData)
             .eq('id', id)
@@ -118,7 +113,8 @@ router.delete('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
 
     try {
-        const { error } = await supabase
+        // ALTERADO: Usando o cliente centralizado
+        const { error } = await supabaseServerClient
             .from('physical_orders')
             .delete()
             .eq('id', id);

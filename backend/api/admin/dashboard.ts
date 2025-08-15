@@ -1,18 +1,17 @@
-import { createClient } from '@supabase/supabase-js';
 import { Router, Request, Response } from 'express';
+// ADICIONADO: Importa nosso cliente Supabase centralizado.
+import supabaseServerClient from '../../lib/supabase-server.js';
+
+// REMOVIDO: A inicialização local do Supabase foi retirada daqui.
 
 const router = Router();
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
-if (!supabaseUrl || !supabaseServiceKey) { throw new Error('Variáveis de ambiente do Supabase não configuradas.'); }
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Interfaces para garantir a tipagem
 interface MrrContract {
   services: { price: number; type: 'recurring' | 'one_time'; }[] | null;
 }
 
-// CORREÇÃO: Interface específica para os dados da receita mensal
+// Interface específica para os dados da receita mensal
 interface MonthlyRevenueContract {
     created_at: string;
     services: { price: number }[] | null;
@@ -21,10 +20,11 @@ interface MonthlyRevenueContract {
 router.get('/', async (req: Request, res: Response) => {
   try {
     // KPIs (Clientes, MRR, Pedidos)
-    const { count: activeClients } = await supabase.from('contracts').select('client_id', { count: 'exact', head: true }).eq('status', 'active');
-    const { data: mrrData } = await supabase.from('contracts').select('services ( price, type )').eq('status', 'active');
-    const { count: totalOrders } = await supabase.from('orders').select('*', { count: 'exact', head: true });
-    const { data: ordersStatusData } = await supabase.from('orders').select('order_status');
+    // ALTERADO: Usando o cliente centralizado
+    const { count: activeClients } = await supabaseServerClient.from('contracts').select('client_id', { count: 'exact', head: true }).eq('status', 'active');
+    const { data: mrrData } = await supabaseServerClient.from('contracts').select('services ( price, type )').eq('status', 'active');
+    const { count: totalOrders } = await supabaseServerClient.from('orders').select('*', { count: 'exact', head: true });
+    const { data: ordersStatusData } = await supabaseServerClient.from('orders').select('order_status');
     
     const typedMrrData = mrrData as MrrContract[] | null;
     const mrr = typedMrrData?.filter(c => c.services && c.services.length > 0 && c.services[0].type === 'recurring').reduce((total, c) => total + (c.services?.[0]?.price || 0), 0) || 0;
@@ -34,7 +34,8 @@ router.get('/', async (req: Request, res: Response) => {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-    const { data: monthlyRevenue, error: revenueError } = await supabase
+    // ALTERADO: Usando o cliente centralizado
+    const { data: monthlyRevenue, error: revenueError } = await supabaseServerClient
       .from('contracts')
       .select('created_at, services ( price )')
       .eq('status', 'active')
@@ -42,7 +43,6 @@ router.get('/', async (req: Request, res: Response) => {
 
     if (revenueError) throw new Error(`Erro ao buscar receita mensal: ${revenueError.message}`);
 
-    // CORREÇÃO: Usando a interface para uma conversão de tipo segura, sem 'any'
     const typedMonthlyRevenue = monthlyRevenue as MonthlyRevenueContract[];
     const revenueByMonth = typedMonthlyRevenue.reduce((acc, contract) => {
         const month = new Date(contract.created_at).toLocaleString('pt-BR', { month: 'short' });

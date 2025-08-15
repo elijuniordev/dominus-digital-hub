@@ -1,21 +1,17 @@
 import { Router, Request, Response } from 'express';
-import { createClient } from '@supabase/supabase-js';
-import { iconNames } from '../../../src/lib/icon-map'; // CORRIGIDO: O caminho relativo está certo agora
+// ADICIONADO: Importa nosso cliente Supabase centralizado.
+import supabaseServerClient from '../../lib/supabase-server.js';
+// ADICIONADO: Importa o iconMap e adiciona a extensão .js.
+import { iconNames } from '../../../src/lib/icon-map.js';
+
+// REMOVIDO: A inicialização local do Supabase e a importação do createClient foram retiradas.
 
 const servicesAdminRouter = Router();
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('As variáveis de ambiente do Supabase não estão configuradas no backend.');
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
 servicesAdminRouter.get('/', async (req: Request, res: Response) => {
   try {
-    const { data, error } = await supabase
+    // ALTERADO: Usando o cliente centralizado
+    const { data, error } = await supabaseServerClient
       .from('services')
       .select('*')
       .order('created_at', { ascending: false });
@@ -44,7 +40,8 @@ servicesAdminRouter.post('/', async (req: Request, res: Response) => {
   }
 
   try {
-    const { data, error } = await supabase
+    // ALTERADO: Usando o cliente centralizado
+    const { data, error } = await supabaseServerClient
       .from('services')
       .insert(newService)
       .select();
@@ -70,7 +67,8 @@ servicesAdminRouter.put('/:id', async (req: Request, res: Response) => {
   }
 
   try {
-    const { data, error } = await supabase
+    // ALTERADO: Usando o cliente centralizado
+    const { data, error } = await supabaseServerClient
       .from('services')
       .update(updatedService)
       .eq('id', id)
@@ -92,7 +90,8 @@ servicesAdminRouter.delete('/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
-    const { error } = await supabase
+    // ALTERADO: Usando o cliente centralizado
+    const { error } = await supabaseServerClient
       .from('services')
       .delete()
       .eq('id', id);

@@ -1,11 +1,22 @@
-import { createClient } from '@supabase/supabase-js';
+// ADICIONADO: Importa nosso cliente Supabase centralizado e seguro.
+import supabaseServerClient from '../../lib/supabase-server.js';
 import { Router, Request, Response } from 'express';
 
+// REMOVIDO: A importação do createClient não é mais necessária aqui.
+// import { createClient } from '@supabase/supabase-js';
+
 const router = Router();
+
+// REMOVIDO: Toda a inicialização local do Supabase foi retirada.
+/*
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 if (!supabaseUrl || !supabaseServiceKey) { throw new Error('Variáveis de ambiente do Supabase não configuradas.'); }
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+*/
+
+// O resto do seu código permanece quase idêntico, apenas trocando 'supabase'
+// por 'supabaseServerClient'.
 
 // Tipagem para os dados de atualização, incluindo os novos campos de SEO
 type BlogPostUpdatePayload = {
@@ -27,7 +38,8 @@ type BlogPostUpdatePayload = {
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const { data, error } = await supabase
+    // ALTERADO: Usando o cliente centralizado
+    const { data, error } = await supabaseServerClient
       .from('blog_posts')
       .select(`
         id, title, slug, content, publish_date, featured_image_url, status,
@@ -51,8 +63,8 @@ router.get('/', async (req: Request, res: Response) => {
 router.get('/:slug', async (req: Request, res: Response) => {
     const { slug } = req.params;
     try {
-        // Usando * para pegar todos os campos, incluindo os novos de SEO
-        const { data, error } = await supabase
+        // ALTERADO: Usando o cliente centralizado
+        const { data, error } = await supabaseServerClient
             .from('blog_posts')
             .select(`*, users!inner(email), blog_categories!inner(name)`)
             .eq('slug', slug)
@@ -82,7 +94,8 @@ router.post('/', async (req: Request, res: Response) => {
     }
     const slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     try {
-        const { data, error } = await supabase.from('blog_posts').insert({
+        // ALTERADO: Usando o cliente centralizado
+        const { data, error } = await supabaseServerClient.from('blog_posts').insert({
             title, slug, content, author_id, category_id, featured_image_url,
             status: status || 'draft',
             publish_date: status === 'published' ? new Date().toISOString() : null,
@@ -118,7 +131,8 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (image_alt_text !== undefined) updateData.image_alt_text = image_alt_text;
 
     try {
-        const { data, error } = await supabase.from('blog_posts').update(updateData).eq('id', id).select().single();
+        // ALTERADO: Usando o cliente centralizado
+        const { data, error } = await supabaseServerClient.from('blog_posts').update(updateData).eq('id', id).select().single();
         if (error) throw error;
         res.status(200).json(data);
     } catch (error) {
@@ -133,7 +147,8 @@ router.put('/:id', async (req: Request, res: Response) => {
 router.delete('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     try {
-        const { error } = await supabase.from('blog_posts').delete().eq('id', id);
+        // ALTERADO: Usando o cliente centralizado
+        const { error } = await supabaseServerClient.from('blog_posts').delete().eq('id', id);
         if (error) throw error;
         res.status(204).send();
     } catch (error) {

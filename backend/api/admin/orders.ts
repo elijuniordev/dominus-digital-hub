@@ -1,16 +1,16 @@
-import { createClient } from '@supabase/supabase-js';
 import { Router, Request, Response } from 'express';
+// ADICIONADO: Importa nosso cliente Supabase centralizado.
+import supabaseServerClient from '../../lib/supabase-server.js';
+
+// REMOVIDO: A inicialização local do Supabase foi retirada.
 
 const router = Router();
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
-if (!supabaseUrl || !supabaseServiceKey) { throw new Error('Variáveis de ambiente do Supabase não configuradas.'); }
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// A rota GET continua a mesma
+// A rota GET para listar todos os pedidos
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const { data, error } = await supabase
+    // ALTERADO: Usando o cliente centralizado
+    const { data, error } = await supabaseServerClient
       .from('orders')
       .select(`id, created_at, order_status, tracking_code, clients_info!inner ( full_name ), services!inner ( name )`)
       .order('created_at', { ascending: false });
@@ -32,7 +32,8 @@ router.post('/', async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'ID do cliente e serviço são obrigatórios.' });
     }
     try {
-        const { data, error } = await supabase.from('orders')
+        // ALTERADO: Usando o cliente centralizado
+        const { data, error } = await supabaseServerClient.from('orders')
             .insert({
                 client_id,
                 service_id,
@@ -48,7 +49,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
 });
 
-// A rota PUT continua a mesma
+// A rota PUT para atualizar um pedido
 router.put('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { order_status, tracking_code } = req.body;
@@ -57,7 +58,8 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (tracking_code !== undefined) updateData.tracking_code = tracking_code;
     if (Object.keys(updateData).length === 0) return res.status(400).json({ error: 'Nenhum dado para atualização.' });
     try {
-        const { data, error } = await supabase.from('orders').update(updateData).eq('id', id).select().single();
+        // ALTERADO: Usando o cliente centralizado
+        const { data, error } = await supabaseServerClient.from('orders').update(updateData).eq('id', id).select().single();
         if (error) throw error;
         res.status(200).json(data);
     } catch (error) {
@@ -73,7 +75,8 @@ router.put('/:id', async (req: Request, res: Response) => {
 router.delete('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     try {
-        const { error } = await supabase
+        // ALTERADO: Usando o cliente centralizado
+        const { error } = await supabaseServerClient
             .from('orders')
             .delete()
             .eq('id', id);

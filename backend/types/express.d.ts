@@ -1,11 +1,14 @@
 import { JwtPayload } from 'jsonwebtoken';
 
-// Este arquivo estende a definição de tipo original do Express
+// Define uma interface clara para o nosso usuário autenticado
+interface UserPayload extends JwtPayload {
+  id: string;
+}
+
 declare global {
   namespace Express {
-    interface Request {
-      // Adicionamos nossa propriedade 'user' ao objeto Request
-      user?: JwtPayload & { id: string };
+    export interface Request {
+      user?: UserPayload;
     }
   }
 }
