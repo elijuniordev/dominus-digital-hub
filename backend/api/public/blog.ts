@@ -1,3 +1,5 @@
+// backend/api/public/blog.ts
+
 import { Router, Request, Response } from 'express';
 import supabaseServerClient from '../../lib/supabase-server.js';
 
@@ -7,7 +9,8 @@ const router = Router();
  * @route GET /api/public/blog
  * @description Lista apenas os posts com status 'published'.
  */
-router.get('/', async (req: Request, res: Response) => {
+// CORREÇÃO: Altera a rota para aceitar a requisição com ou sem a barra final.
+router.get(['/', ''], async (req: Request, res: Response) => {
   try {
     const { data, error } = await supabaseServerClient
       .from('blog_posts')

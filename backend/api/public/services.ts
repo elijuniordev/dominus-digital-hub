@@ -1,11 +1,13 @@
+// backend/api/public/services.ts
+
 import { Router, Request, Response } from 'express';
 import supabaseServerClient from '../../lib/supabase-server.js';
-// CORRIGIDO: Adicionada a extensão .js no final do import
 import { iconNames } from '../../../src/lib/icon-map.js';
 
 const router = Router();
 
-router.get('/', async (req: Request, res: Response) => {
+// CORREÇÃO: Altera a rota para aceitar a requisição com ou sem a barra final.
+router.get(['/', ''], async (req: Request, res: Response) => {
     try {
         const { data, error } = await supabaseServerClient
             .from('services')

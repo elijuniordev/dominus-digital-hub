@@ -21,6 +21,11 @@ import publicBlogRouter from './api/public/blog.js';
 const app = express();
 const PORT = config.port;
 
+app.use((req, res, next) => {
+  console.log(`[BACKEND]: Requisição recebida: ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 // Configuração de CORS
 const allowedOrigins = ['http://localhost:5173'];
 const corsOptions: cors.CorsOptions = {
@@ -41,9 +46,9 @@ app.use('/api/admin/physical_orders', authenticateToken, physicalOrdersRouter);
 app.use('/api/admin/services', authenticateToken, servicesAdminRouter);
 app.use('/api/client/dashboard', authenticateToken, clientDashboardRouter);
 app.use('/api/client/orders', authenticateToken, clientOrdersRouter);
-app.use('/api/public/activation', activationRouter);
-app.use('/api/public/services', publicServicesRouter);
-app.use('/api/public/blog', publicBlogRouter);
+app.use('/public/activation', activationRouter);
+app.use('/public/services', publicServicesRouter);
+app.use('/public/blog', publicBlogRouter);
 
 // Rota Padrão e Error Handler
 app.get('/', (req: Request, res: Response) => res.send('API da Dominus Digital Hub está operacional!'));

@@ -1,6 +1,10 @@
 import axios from 'axios';
 import { supabase } from '@/integrations/supabase/client';
 
+const API_URL = import.meta.env.VITE_API_URL || '/api';
+
+console.log('URL da API do Front-end:', API_URL);
+
 export const apiClient = axios.create({
   baseURL: '/', // Correto para funcionar com o proxy
 });
