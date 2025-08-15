@@ -1,69 +1,69 @@
+// src/App.tsx
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-
-// Importação do novo Layout de Admin
-import PublicLayout from "./layouts/PublicLayout";
-import AdminLayout from "./layouts/AdminLayout";
-
-// Importação de todas as suas páginas
-import HomePage from "./pages/public/HomePage";
-import BlogPage from "./pages/public/BlogPage";
-import ClientMiniSite from "./pages/public/ClientMiniSite";
-import ClientLogin from "./pages/client/ClientLogin";
-import ClientDashboard from "./pages/client/ClientDashboard";
-import ClientActivation from "./pages/client/ClientActivation";
-import ClientMiniSiteEditor from "./pages/client/ClientMiniSiteEditor";
-import ClientBilling from "./pages/client/ClientBilling";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import ClientManagement from "./pages/admin/ClientManagement";
-import ServiceManagement from "./pages/admin/ServiceManagement";
-import BlogManagement from "./pages/admin/BlogManagement";
-import NotFound from "./pages/NotFound";
-import OrdersManagement from "./pages/admin/OrdersManagement";
-import PostPage from "./pages/public/PostPage";
+import { ThemeProvider } from './theme-provider'; // Importar ThemeProvider
+import PublicLayout from './layouts/PublicLayout';
+import AdminLayout from './layouts/AdminLayout';
+import HomePage from './pages/public/HomePage';
+import PostPage from './pages/public/PostPage';
+import BlogPage from './pages/public/BlogPage';
+import ClientMiniSite from './pages/public/ClientMiniSite';
+import NotFound from './pages/NotFound';
+import ClientDashboard from './pages/client/ClientDashboard';
+import ClientActivation from './pages/client/ClientActivation';
+import ClientBilling from './pages/client/ClientBilling';
+import ClientLogin from './pages/client/ClientLogin';
+import ClientMiniSiteEditor from './pages/client/ClientMiniSiteEditor';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import BlogManagement from './pages/admin/BlogManagement';
+import ClientManagement from './pages/admin/ClientManagement';
+import OrdersManagement from './pages/admin/OrdersManagement';
+import ServiceManagement from './pages/admin/ServiceManagement';
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          {/* Rotas Públicas - Sem layout de admin */}
-          <Route element={<PublicLayout />}>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/blog" element={<BlogPage />} />
-            <Route path="/cliente/:clientId" element={<ClientMiniSite />} />
-            <Route path="/blog/:slug" element={<PostPage />} />
-          </Route>
-          
-          {/* Rotas do Portal do Cliente - Sem layout de admin */}
-          <Route path="/portal/login" element={<ClientLogin />} />
-          <Route path="/portal/ativacao" element={<ClientActivation />} />
-          <Route path="/portal/dashboard" element={<ClientDashboard />} />
-          <Route path="/portal/personalizar" element={<ClientMiniSiteEditor />} />
-          <Route path="/portal/cobranca" element={<ClientBilling />} />
-          
-          {/* GRUPO DE ROTAS DO ADMIN - Todas usam o AdminLayout */}
-          <Route element={<AdminLayout />}>
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route path="/admin/clientes" element={<ClientManagement />} />
-            <Route path="/admin/servicos" element={<ServiceManagement />} />
-            <Route path="/admin/pedidos" element={<OrdersManagement />} />
-            <Route path="/admin/blog" element={<BlogManagement />} />
-          </Route>
-          
-          {/* Rota "não encontrada" */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      {/* Adicionar ThemeProvider para gerenciar o tema em toda a aplicação */}
+      <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+        <BrowserRouter>
+          <Routes>
+            {/* Rotas Públicas com o PublicLayout */}
+            <Route path="/" element={<PublicLayout />}>
+              <Route index element={<HomePage />} />
+              <Route path="blog" element={<BlogPage />} />
+              <Route path="blog/:slug" element={<PostPage />} />
+              <Route path="minisite/:clientSlug" element={<ClientMiniSite />} />
+            </Route>
+
+            {/* Rotas da Área do Cliente */}
+            <Route path="/cliente" element={<PublicLayout />}>
+              <Route path="login" element={<ClientLogin />} />
+              <Route path="ativacao" element={<ClientActivation />} />
+              <Route path="dashboard" element={<ClientDashboard />} />
+              <Route path="faturamento" element={<ClientBilling />} />
+              <Route path="editor" element={<ClientMiniSiteEditor />} />
+            </Route>
+
+            {/* Rotas da Área Admin com o AdminLayout */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="blog" element={<BlogManagement />} />
+              <Route path="clientes" element={<ClientManagement />} />
+              <Route path="pedidos" element={<OrdersManagement />} />
+              <Route path="servicos" element={<ServiceManagement />} />
+            </Route>
+
+            {/* Catch-all para rotas não encontradas */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+        <Toaster />
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;

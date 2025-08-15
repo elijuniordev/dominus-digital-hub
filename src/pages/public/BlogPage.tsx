@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ArrowLeft } from "lucide-react";
+import DOMPurify from 'dompurify';
 
 // --- TIPAGEM para os Posts do Blog ---
 type BlogPost = {
@@ -19,11 +20,16 @@ type BlogPost = {
   blog_categories: { name: string } | null;
 };
 
-// Função de resumo segura
+// CORRIGIDO: Função de resumo segura que remove tags HTML antes de cortar
 const createExcerpt = (text: string | null | undefined, maxLength: number = 120) => {
   if (!text) return '';
-  if (text.length <= maxLength) return text;
-  return text.slice(0, maxLength) + '...';
+  // 1. Sanitiza o conteúdo removendo todas as tags HTML
+  const sanitizedText = DOMPurify.sanitize(text, { ALLOWED_TAGS: [] });
+  
+  if (sanitizedText.length <= maxLength) return sanitizedText.trim();
+  // Garante que o corte não quebre palavras
+  const trimmedText = sanitizedText.slice(0, maxLength);
+  return trimmedText.slice(0, trimmedText.lastIndexOf(' ')) + '...';
 };
 
 const BlogPage = () => {

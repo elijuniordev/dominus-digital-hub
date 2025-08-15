@@ -7,16 +7,45 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import DOMPurify from 'dompurify';
 
 type BlogPost = { id: string; title: string; slug: string; content: string; status: 'draft' | 'published'; featured_image_url: string | null; publish_date: string | null; };
-const createExcerpt = (text: string | null | undefined, maxLength: number = 80) => { if (!text) return ''; if (text.length <= maxLength) return text; return text.slice(0, maxLength) + '...'; };
+
+// CORRIGIDO: Função de resumo segura que remove tags HTML antes de cortar
+const createExcerpt = (text: string | null | undefined, maxLength: number = 80) => {
+  if (!text) return '';
+  // 1. Sanitiza o conteúdo removendo todas as tags HTML
+  const sanitizedText = DOMPurify.sanitize(text, { ALLOWED_TAGS: [] });
+  
+  if (sanitizedText.length <= maxLength) return sanitizedText.trim();
+  // Garante que o corte não quebre palavras
+  const trimmedText = sanitizedText.slice(0, maxLength);
+  return trimmedText.slice(0, trimmedText.lastIndexOf(' ')) + '...';
+};
 
 export const BlogSection = () => {
   const { toast } = useToast();
   const [latestPosts, setLatestPosts] = useState<BlogPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const fetchLatestPosts = useCallback(async () => { setIsLoading(true); try { const response = await fetch('/api/admin/blog'); if (!response.ok) throw new Error("Não foi possível carregar os artigos."); const allPosts: BlogPost[] = await response.json(); const publishedPosts = allPosts.filter(post => post.status === 'published').slice(0, 3); setLatestPosts(publishedPosts); } catch (error) { toast({ title: "Erro", description: `Não foi possível carregar o blog.`, variant: "destructive" }); } finally { setIsLoading(false); } }, [toast]);
-  useEffect(() => { fetchLatestPosts(); }, [fetchLatestPosts]);
+  
+  const fetchLatestPosts = useCallback(async () => { 
+    setIsLoading(true); 
+    try { 
+      const response = await fetch('/api/admin/blog'); 
+      if (!response.ok) throw new Error("Não foi possível carregar os artigos."); 
+      const allPosts: BlogPost[] = await response.json(); 
+      const publishedPosts = allPosts.filter(post => post.status === 'published').slice(0, 3); 
+      setLatestPosts(publishedPosts); 
+    } catch (error) { 
+      toast({ title: "Erro", description: `Não foi possível carregar o blog.`, variant: "destructive" }); 
+    } finally { 
+      setIsLoading(false); 
+    } 
+  }, [toast]);
+  
+  useEffect(() => { 
+    fetchLatestPosts(); 
+  }, [fetchLatestPosts]);
 
   return (
     <section className="py-20 bg-muted/30">
@@ -52,3 +81,4 @@ export const BlogSection = () => {
     </section>
   );
 };
+
