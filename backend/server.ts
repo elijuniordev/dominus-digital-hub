@@ -20,6 +20,10 @@ import clientOrdersRouter from './api/client/order.js';
 import { authenticateToken } from './api/middleware/auth.js';
 import publicBlogRouter from './api/public/blog.js';
 
+// backend/server.ts
+
+// ... imports (não é necessário alterá-los)
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -28,17 +32,20 @@ app.use((req, res, next) => {
   next();
 });
 
-// Configuração do CORS utilizando variável de ambiente
+// Configuração do CORS
+// Para testar, use uma configuração mais restritiva para evitar problemas
 const corsOptions: cors.CorsOptions = {
-  origin: '*',
+  origin: 'http://localhost:5173', // Permita apenas a origem do seu front-end
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 };
 
-app.use(cors(corsOptions));
+app.use(cors());
 app.use(express.json());
 
-// Rotas da API
+// Rotas da API (CORRIGIDO)
+// Agora todas as rotas públicas também têm o prefixo '/api'
 app.use('/api/admin/blog', authenticateToken, blogRouter);
 app.use('/api/admin/clients', authenticateToken, clientsRouter);
 app.use('/api/admin/dashboard', authenticateToken, dashboardRouter);
@@ -47,9 +54,16 @@ app.use('/api/admin/physical_orders', authenticateToken, physicalOrdersRouter);
 app.use('/api/admin/services', authenticateToken, servicesAdminRouter);
 app.use('/api/client/dashboard', authenticateToken, clientDashboardRouter);
 app.use('/api/client/orders', authenticateToken, clientOrdersRouter);
-app.use('/public/activation', activationRouter);
-app.use('/public/services', publicServicesRouter);
-app.use('/public/blog', publicBlogRouter);
+
+app.use('/api/public/activation', activationRouter);
+app.use('/api/public/services', publicServicesRouter);
+app.use('/api/public/blog', publicBlogRouter);
+
+// ... o restante do seu código
+
+app.listen(PORT, () => {
+  console.log(`--- SUCESSO! Servidor completo iniciado em http://localhost:${PORT} ---`);
+});
 
 // Rota Padrão e Error Handler
 app.get('/', (req: Request, res: Response) => res.send('API da Dominus Digital Hub está operacional!'));
