@@ -2,7 +2,7 @@ console.log('[DEBUG] Carregando: api/admin/blog.ts');
 
 import { Router, Request, Response } from 'express';
 // A única dependência local deve ser o nosso cliente Supabase centralizado.
-import supabaseServerClient from '../../lib/supabase-server.js';
+import { supabaseServer } from '../../lib/supabase-server.js';
 
 const router = Router();
 
@@ -23,7 +23,7 @@ type BlogPostUpdatePayload = {
 // Rota GET para listar todos os posts
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const { data, error } = await supabaseServerClient
+    const { data, error } = await supabaseServer
       .from('blog_posts')
       .select(`
         id, title, slug, content, publish_date, featured_image_url, status,
@@ -43,7 +43,7 @@ router.get('/', async (req: Request, res: Response) => {
 router.get('/:slug', async (req: Request, res: Response) => {
     const { slug } = req.params;
     try {
-        const { data, error } = await supabaseServerClient
+        const { data, error } = await supabaseServer
             .from('blog_posts')
             .select(`*, users!inner(email), blog_categories!inner(name)`)
             .eq('slug', slug)
@@ -70,7 +70,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
     const slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     try {
-        const { data, error } = await supabaseServerClient.from('blog_posts').insert({
+        const { data, error } = await supabaseServer.from('blog_posts').insert({
             title, slug, content, author_id, category_id, featured_image_url,
             status: status || 'draft',
             publish_date: status === 'published' ? new Date().toISOString() : null,
@@ -103,7 +103,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (image_alt_text !== undefined) updateData.image_alt_text = image_alt_text;
 
     try {
-        const { data, error } = await supabaseServerClient.from('blog_posts').update(updateData).eq('id', id).select().single();
+        const { data, error } = await supabaseServer.from('blog_posts').update(updateData).eq('id', id).select().single();
         if (error) throw error;
         res.status(200).json(data);
     } catch (error) {
@@ -116,7 +116,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 router.delete('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     try {
-        const { error } = await supabaseServerClient.from('blog_posts').delete().eq('id', id);
+        const { error } = await supabaseServer.from('blog_posts').delete().eq('id', id);
         if (error) throw error;
         res.status(204).send();
     } catch (error) {

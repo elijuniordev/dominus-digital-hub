@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 // ADICIONADO: Importa nosso cliente Supabase centralizado.
-import supabaseServerClient from '../../lib/supabase-server.js';
+import { supabaseServer } from '../../lib/supabase-server.js';
 
 // REMOVIDO: A inicialização local do Supabase foi retirada.
 
@@ -10,7 +10,7 @@ const router = Router();
 router.get('/', async (req: Request, res: Response) => {
   try {
     // ALTERADO: Usando o cliente centralizado
-    const { data, error } = await supabaseServerClient
+    const { data, error } = await supabaseServer
       .from('orders')
       .select(`id, created_at, order_status, tracking_code, clients_info!inner ( full_name ), services!inner ( name )`)
       .order('created_at', { ascending: false });
@@ -33,7 +33,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
     try {
         // ALTERADO: Usando o cliente centralizado
-        const { data, error } = await supabaseServerClient.from('orders')
+        const { data, error } = await supabaseServer.from('orders')
             .insert({
                 client_id,
                 service_id,
@@ -59,7 +59,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (Object.keys(updateData).length === 0) return res.status(400).json({ error: 'Nenhum dado para atualização.' });
     try {
         // ALTERADO: Usando o cliente centralizado
-        const { data, error } = await supabaseServerClient.from('orders').update(updateData).eq('id', id).select().single();
+        const { data, error } = await supabaseServer.from('orders').update(updateData).eq('id', id).select().single();
         if (error) throw error;
         res.status(200).json(data);
     } catch (error) {
@@ -76,7 +76,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     try {
         // ALTERADO: Usando o cliente centralizado
-        const { error } = await supabaseServerClient
+        const { error } = await supabaseServer
             .from('orders')
             .delete()
             .eq('id', id);

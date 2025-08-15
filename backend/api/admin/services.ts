@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 // ADICIONADO: Importa nosso cliente Supabase centralizado.
-import supabaseServerClient from '../../lib/supabase-server.js';
+import { supabaseServer } from '../../lib/supabase-server.js';
 // ADICIONADO: Importa o iconMap e adiciona a extensão .js.
 import { iconNames } from '../../../src/lib/icon-map.js';
 
@@ -11,7 +11,7 @@ const servicesAdminRouter = Router();
 servicesAdminRouter.get('/', async (req: Request, res: Response) => {
   try {
     // ALTERADO: Usando o cliente centralizado
-    const { data, error } = await supabaseServerClient
+    const { data, error } = await supabaseServer
       .from('services')
       .select('*')
       .order('created_at', { ascending: false });
@@ -41,7 +41,7 @@ servicesAdminRouter.post('/', async (req: Request, res: Response) => {
 
   try {
     // ALTERADO: Usando o cliente centralizado
-    const { data, error } = await supabaseServerClient
+    const { data, error } = await supabaseServer
       .from('services')
       .insert(newService)
       .select();
@@ -68,7 +68,7 @@ servicesAdminRouter.put('/:id', async (req: Request, res: Response) => {
 
   try {
     // ALTERADO: Usando o cliente centralizado
-    const { data, error } = await supabaseServerClient
+    const { data, error } = await supabaseServer
       .from('services')
       .update(updatedService)
       .eq('id', id)
@@ -91,7 +91,7 @@ servicesAdminRouter.delete('/:id', async (req: Request, res: Response) => {
 
   try {
     // ALTERADO: Usando o cliente centralizado
-    const { error } = await supabaseServerClient
+    const { error } = await supabaseServer
       .from('services')
       .delete()
       .eq('id', id);

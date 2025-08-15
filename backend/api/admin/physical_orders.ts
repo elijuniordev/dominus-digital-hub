@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 // ADICIONADO: Importa nosso cliente Supabase centralizado.
-import supabaseServerClient from '../../lib/supabase-server.js';
+import { supabaseServer } from '../../lib/supabase-server.js';
 
 // REMOVIDO: A inicialização local do Supabase foi retirada.
 
@@ -13,7 +13,7 @@ const router = Router();
 router.get('/', async (req: Request, res: Response) => {
   try {
     // ALTERADO: Usando o cliente centralizado
-    const { data, error } = await supabaseServerClient
+    const { data, error } = await supabaseServer
       .from('physical_orders')
       .select(`
         id,
@@ -48,7 +48,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     try {
         // ALTERADO: Usando o cliente centralizado
-        const { data, error } = await supabaseServerClient
+        const { data, error } = await supabaseServer
             .from('physical_orders')
             .insert({
                 client_id: client_id,
@@ -88,7 +88,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     try {
         // ALTERADO: Usando o cliente centralizado
-        const { data, error } = await supabaseServerClient
+        const { data, error } = await supabaseServer
             .from('physical_orders')
             .update(updateData)
             .eq('id', id)
@@ -114,7 +114,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
     try {
         // ALTERADO: Usando o cliente centralizado
-        const { error } = await supabaseServerClient
+        const { error } = await supabaseServer
             .from('physical_orders')
             .delete()
             .eq('id', id);

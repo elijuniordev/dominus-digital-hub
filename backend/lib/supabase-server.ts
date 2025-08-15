@@ -1,9 +1,12 @@
-console.log('[DEBUG] Carregando: lib/supabase-server.ts');
+// backend/lib/supabase-server.ts
 
 import { createClient } from '@supabase/supabase-js';
-import config from '../config.js';
 
-// Cria uma única instância do cliente Supabase para ser usada em todo o backend.
-const supabaseServerClient = createClient(config.supabaseUrl!, config.supabaseServiceKey!);
+const supabaseUrl = process.env.SUPABASE_URL as string;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY as string;
 
-export default supabaseServerClient;
+export const supabaseServer = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    persistSession: false,
+  },
+});

@@ -1,19 +1,23 @@
 import axios from 'axios';
-import { supabase } from '@/integrations/supabase/client';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+const API_URL = import.meta.env.VITE_API_URL;
 
-console.log('URL da API do Front-end:', API_URL);
+if (!API_URL) {
+  throw new Error("A variável de ambiente VITE_API_URL não está definida.");
+}
 
-export const apiClient = axios.create({
-  baseURL: '/', // Correto para funcionar com o proxy
+const apiClient = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
 apiClient.interceptors.request.use(
-  async (config) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      config.headers.Authorization = `Bearer ${session.access_token}`;
+  (config) => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;
   },
@@ -21,3 +25,18 @@ apiClient.interceptors.request.use(
     return Promise.reject(error);
   }
 );
+
+apiClient.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      console.error("Erro de autenticação: Token inválido ou expirado.");
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Exportação Padrão do apiClient
+export default apiClient;

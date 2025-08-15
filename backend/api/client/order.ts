@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import supabaseServerClient from '../../lib/supabase-server.js'; // Corrigido com .js
+import { supabaseServer } from '../../lib/supabase-server.js';
 
 const router = Router();
 
@@ -11,7 +11,7 @@ router.get('/', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Usuário não autenticado.' });
     }
     
-    const { data: clientInfo, error: clientError } = await supabaseServerClient
+    const { data: clientInfo, error: clientError } = await supabaseServer
       .from('clients_info')
       .select('id')
       .eq('user_id', user.id)
@@ -21,7 +21,7 @@ router.get('/', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Informações do cliente não encontradas.' });
     }
 
-    const { data: orders, error: ordersError } = await supabaseServerClient
+    const { data: orders, error: ordersError } = await supabaseServer
       .from('contracts') // Assumindo que 'contracts' é a tabela de pedidos
       .select('*')
       .eq('client_id', clientInfo.id);

@@ -1,6 +1,8 @@
 // backend/server.ts
 
-import config from './config.js';
+// Carrega as variáveis de ambiente do arquivo .env
+import 'dotenv/config'; 
+
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 
@@ -19,17 +21,16 @@ import { authenticateToken } from './api/middleware/auth.js';
 import publicBlogRouter from './api/public/blog.js';
 
 const app = express();
-const PORT = config.port;
+const PORT = process.env.PORT || 3000;
 
 app.use((req, res, next) => {
   console.log(`[BACKEND]: Requisição recebida: ${req.method} ${req.originalUrl}`);
   next();
 });
 
-// Configuração de CORS
-const allowedOrigins = ['http://localhost:5173'];
+// Configuração do CORS utilizando variável de ambiente
 const corsOptions: cors.CorsOptions = {
-  origin: allowedOrigins,
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 };

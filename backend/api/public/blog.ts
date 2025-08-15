@@ -1,7 +1,5 @@
-// backend/api/public/blog.ts
-
 import { Router, Request, Response } from 'express';
-import supabaseServerClient from '../../lib/supabase-server.js';
+import { supabaseServer } from '../../lib/supabase-server.js';
 
 const router = Router();
 
@@ -12,7 +10,7 @@ const router = Router();
 // CORREÇÃO: Altera a rota para aceitar a requisição com ou sem a barra final.
 router.get(['/', ''], async (req: Request, res: Response) => {
   try {
-    const { data, error } = await supabaseServerClient
+    const { data, error } = await supabaseServer
       .from('blog_posts')
       .select(`id, title, slug, content, publish_date, featured_image_url, users(email), blog_categories(name)`)
       .eq('status', 'published') // Filtra apenas posts publicados

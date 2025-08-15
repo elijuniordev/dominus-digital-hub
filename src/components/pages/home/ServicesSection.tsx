@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import useEmblaCarousel from 'embla-carousel-react';
 // A importação agora usa chaves {}.
-import { apiClient } from "@/api/apiClient"; 
+import apiClient from "@/api/apiClient";
 import { iconMap } from "@/lib/icon-map"; 
 
 type Service = {

@@ -1,7 +1,7 @@
 // backend/api/public/services.ts
 
 import { Router, Request, Response } from 'express';
-import supabaseServerClient from '../../lib/supabase-server.js';
+import { supabaseServer } from '../../lib/supabase-server.js';
 import { iconNames } from '../../../src/lib/icon-map.js';
 
 const router = Router();
@@ -9,7 +9,7 @@ const router = Router();
 // CORREÇÃO: Altera a rota para aceitar a requisição com ou sem a barra final.
 router.get(['/', ''], async (req: Request, res: Response) => {
     try {
-        const { data, error } = await supabaseServerClient
+        const { data, error } = await supabaseServer
             .from('services')
             .select('*')
             .order('name', { ascending: true });

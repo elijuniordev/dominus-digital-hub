@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 // ADICIONADO: Importa nosso cliente Supabase centralizado.
-import supabaseServerClient from '../../lib/supabase-server.js';
+import { supabaseServer } from '../../lib/supabase-server.js';
 
 // REMOVIDO: A inicialização local do Supabase foi retirada daqui.
 
@@ -9,6 +9,10 @@ const router = Router();
 // Interfaces para garantir a tipagem
 interface MrrContract {
   services: { price: number; type: 'recurring' | 'one_time'; }[] | null;
+}
+
+interface OrderStatus {
+  order_status: string;
 }
 
 // Interface específica para os dados da receita mensal
@@ -21,10 +25,10 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     // KPIs (Clientes, MRR, Pedidos)
     // ALTERADO: Usando o cliente centralizado
-    const { count: activeClients } = await supabaseServerClient.from('contracts').select('client_id', { count: 'exact', head: true }).eq('status', 'active');
-    const { data: mrrData } = await supabaseServerClient.from('contracts').select('services ( price, type )').eq('status', 'active');
-    const { count: totalOrders } = await supabaseServerClient.from('orders').select('*', { count: 'exact', head: true });
-    const { data: ordersStatusData } = await supabaseServerClient.from('orders').select('order_status');
+    const { count: activeClients } = await supabaseServer.from('contracts').select('client_id', { count: 'exact', head: true }).eq('status', 'active');
+    const { data: mrrData } = await supabaseServer.from('contracts').select('services ( price, type )').eq('status', 'active');
+    const { count: totalOrders } = await supabaseServer.from('orders').select('*', { count: 'exact', head: true });
+    const { data: ordersStatusData } = await supabaseServer.from('orders').select('order_status');
     
     const typedMrrData = mrrData as MrrContract[] | null;
     const mrr = typedMrrData?.filter(c => c.services && c.services.length > 0 && c.services[0].type === 'recurring').reduce((total, c) => total + (c.services?.[0]?.price || 0), 0) || 0;
@@ -35,7 +39,7 @@ router.get('/', async (req: Request, res: Response) => {
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
     // ALTERADO: Usando o cliente centralizado
-    const { data: monthlyRevenue, error: revenueError } = await supabaseServerClient
+    const { data: monthlyRevenue, error: revenueError } = await supabaseServer
       .from('contracts')
       .select('created_at, services ( price )')
       .eq('status', 'active')

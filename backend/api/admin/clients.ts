@@ -1,11 +1,19 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 // ADICIONADO: Importa nosso cliente Supabase centralizado com a extensão .js
-import supabaseServerClient from '../../lib/supabase-server.js';
+import { supabaseServer } from '../../lib/supabase-server.js';
 
 // REMOVIDO: Toda a inicialização local do Supabase foi retirada.
 
 const router = Router();
+
+interface ClientData {
+    name: string;
+    email: string;
+    phone: string;
+    company: string;
+    created_at: string;
+}
 
 /**
  * @route GET /api/admin/clients
@@ -14,7 +22,7 @@ const router = Router();
 router.get('/', async (req: Request, res: Response) => {
   try {
     // ALTERADO: Usando o cliente centralizado
-    const { data, error } = await supabaseServerClient
+    const { data, error } = await supabaseServer
       .from('clients_info')
       .select(`
         id,
@@ -72,7 +80,7 @@ router.post('/', async (req: Request, res: Response) => {
 
   try {
     // ALTERADO: Usando o cliente centralizado
-    const { data: authData, error: authError } = await supabaseServerClient.auth.admin.createUser({
+    const { data: authData, error: authError } = await supabaseServer.auth.admin.createUser({
       email,
       password: uuidv4(),
       email_confirm: true,
@@ -84,7 +92,7 @@ router.post('/', async (req: Request, res: Response) => {
     createdUserId = authData.user.id;
     
     // ALTERADO: Usando o cliente centralizado
-    const { error: userError } = await supabaseServerClient
+    const { error: userError } = await supabaseServer
       .from('users')
       .insert({ id: createdUserId, email: email, role: 'client' });
     
@@ -95,7 +103,7 @@ router.post('/', async (req: Request, res: Response) => {
     const miniSiteUrl = (business_name || full_name).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     
     // ALTERADO: Usando o cliente centralizado
-    const { data: clientInfo, error: clientInfoError } = await supabaseServerClient
+    const { data: clientInfo, error: clientInfoError } = await supabaseServer
       .from('clients_info')
       .insert({
         user_id: createdUserId,
@@ -122,7 +130,7 @@ router.post('/', async (req: Request, res: Response) => {
       }));
 
       // ALTERADO: Usando o cliente centralizado
-      const { error: contractsError } = await supabaseServerClient
+      const { error: contractsError } = await supabaseServer
         .from('contracts')
         .insert(contractsToInsert);
 
@@ -136,7 +144,7 @@ router.post('/', async (req: Request, res: Response) => {
   } catch (error) {
     if (createdUserId) {
       // ALTERADO: Usando o cliente centralizado
-      await supabaseServerClient.auth.admin.deleteUser(createdUserId);
+      await supabaseServer.auth.admin.deleteUser(createdUserId);
     }
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido no cadastro de cliente.';
     console.error('Erro detalhado:', error);
@@ -154,7 +162,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     try {
         // ALTERADO: Usando o cliente centralizado
-        const { data, error } = await supabaseServerClient
+        const { data, error } = await supabaseServer
             .from('clients_info')
             .update({ full_name, business_name, phone, notes })
             .eq('id', id)
@@ -179,7 +187,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
     try {
         // ALTERADO: Usando o cliente centralizado
-        const { data: clientInfo, error: fetchError } = await supabaseServerClient
+        const { data: clientInfo, error: fetchError } = await supabaseServer
             .from('clients_info')
             .select('user_id')
             .eq('id', id)
@@ -192,7 +200,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
         const { user_id } = clientInfo;
 
         // ALTERADO: Usando o cliente centralizado
-        const { error: deleteError } = await supabaseServerClient.auth.admin.deleteUser(user_id);
+        const { error: deleteError } = await supabaseServer.auth.admin.deleteUser(user_id);
 
         if (deleteError) {
             throw new Error(deleteError.message);
