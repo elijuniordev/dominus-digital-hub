@@ -1,5 +1,4 @@
 {
-  // CORREÇÃO: O caminho agora aponta para o arquivo na mesma pasta.
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "composite": true,
@@ -7,7 +6,8 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
-    "strict": true
+    // ADICIONADO: Garante que este arquivo também não gere output, resolvendo o aviso.
+    "noEmit": true
   },
   "include": ["vite.config.ts"]
 }

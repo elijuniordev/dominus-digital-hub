@@ -1,7 +1,10 @@
+// backend/server.ts
+
 import config from './config.js';
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-// ... (todas as suas importações de rotas)
+
+// Importações de rotas
 import blogRouter from './api/admin/blog.js';
 import clientsRouter from './api/admin/clients.js';
 import dashboardRouter from './api/admin/dashboard.js';
@@ -11,31 +14,25 @@ import servicesAdminRouter from './api/admin/services.js';
 import publicServicesRouter from './api/public/services.js';
 import activationRouter from './api/public/activation.js';
 import clientDashboardRouter from './api/client/dashboard.js';
-import clientOrdersRouter from './api/client/order.js'; 
+import clientOrdersRouter from './api/client/order.js';
 import { authenticateToken } from './api/middleware/auth.js';
 import publicBlogRouter from './api/public/blog.js';
 
 const app = express();
 const PORT = config.port;
 
-// --- CONFIGURAÇÃO DE CORS EXPLÍCITA ---
-const allowedOrigins = [
-  'http://localhost:5173', // Permite o acesso do seu frontend
-];
-
+// Configuração de CORS
+const allowedOrigins = ['http://localhost:5173'];
 const corsOptions: cors.CorsOptions = {
   origin: allowedOrigins,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
-// Aplica o CORS a todas as requisições
 app.use(cors(corsOptions));
-
 app.use(express.json());
 
-// --- ROTAS DA API ---
-// (o restante das suas rotas permanece igual)
+// Rotas da API
 app.use('/api/admin/blog', authenticateToken, blogRouter);
 app.use('/api/admin/clients', authenticateToken, clientsRouter);
 app.use('/api/admin/dashboard', authenticateToken, dashboardRouter);
@@ -45,13 +42,13 @@ app.use('/api/admin/services', authenticateToken, servicesAdminRouter);
 app.use('/api/client/dashboard', authenticateToken, clientDashboardRouter);
 app.use('/api/client/orders', authenticateToken, clientOrdersRouter);
 app.use('/api/public/activation', activationRouter);
-app.use('/api/services', publicServicesRouter);
+app.use('/api/public/services', publicServicesRouter);
 app.use('/api/public/blog', publicBlogRouter);
 
+// Rota Padrão e Error Handler
+app.get('/', (req: Request, res: Response) => res.send('API da Dominus Digital Hub está operacional!'));
 
-app.get('/', (req, res) => res.send('API da Dominus Digital Hub está operacional!'));
-
-app.use((err, req, res, next) => {
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error('[ERRO NÃO TRATADO]:', err.stack);
   res.status(500).json({ error: 'Ocorreu um erro inesperado no servidor.' });
 });
