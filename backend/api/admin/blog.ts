@@ -1,24 +1,12 @@
-// ADICIONADO: Importa nosso cliente Supabase centralizado e seguro.
-import supabaseServerClient from '../../lib/supabase-server.js';
-import { Router, Request, Response } from 'express';
+console.log('[DEBUG] Carregando: api/admin/blog.ts');
 
-// REMOVIDO: A importação do createClient não é mais necessária aqui.
-// import { createClient } from '@supabase/supabase-js';
+import { Router, Request, Response } from 'express';
+// A única dependência local deve ser o nosso cliente Supabase centralizado.
+import supabaseServerClient from '../../lib/supabase-server.js';
 
 const router = Router();
 
-// REMOVIDO: Toda a inicialização local do Supabase foi retirada.
-/*
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
-if (!supabaseUrl || !supabaseServiceKey) { throw new Error('Variáveis de ambiente do Supabase não configuradas.'); }
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-*/
-
-// O resto do seu código permanece quase idêntico, apenas trocando 'supabase'
-// por 'supabaseServerClient'.
-
-// Tipagem para os dados de atualização, incluindo os novos campos de SEO
+// Tipagem para os dados de atualização
 type BlogPostUpdatePayload = {
   title?: string;
   slug?: string;
@@ -32,13 +20,9 @@ type BlogPostUpdatePayload = {
   image_alt_text?: string;
 };
 
-/**
- * @route GET /api/admin/blog
- * @description Lista todos os posts.
- */
+// Rota GET para listar todos os posts
 router.get('/', async (req: Request, res: Response) => {
   try {
-    // ALTERADO: Usando o cliente centralizado
     const { data, error } = await supabaseServerClient
       .from('blog_posts')
       .select(`
@@ -51,19 +35,14 @@ router.get('/', async (req: Request, res: Response) => {
     res.status(200).json(data);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Erro ao buscar posts.';
-    console.error('Erro detalhado do Supabase:', error);
     res.status(500).json({ error: errorMessage });
   }
 });
 
-/**
- * @route GET /api/admin/blog/:slug
- * @description Busca um único post (incluindo todos os campos de SEO).
- */
+// Rota GET para buscar um post pelo slug
 router.get('/:slug', async (req: Request, res: Response) => {
     const { slug } = req.params;
     try {
-        // ALTERADO: Usando o cliente centralizado
         const { data, error } = await supabaseServerClient
             .from('blog_posts')
             .select(`*, users!inner(email), blog_categories!inner(name)`)
@@ -79,10 +58,7 @@ router.get('/:slug', async (req: Request, res: Response) => {
     }
 });
 
-/**
- * @route POST /api/admin/blog
- * @description Cria um novo post, incluindo os campos de SEO.
- */
+// Rota POST para criar um novo post
 router.post('/', async (req: Request, res: Response) => {
     const { 
       title, content, author_id, category_id, featured_image_url, status,
@@ -94,7 +70,6 @@ router.post('/', async (req: Request, res: Response) => {
     }
     const slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     try {
-        // ALTERADO: Usando o cliente centralizado
         const { data, error } = await supabaseServerClient.from('blog_posts').insert({
             title, slug, content, author_id, category_id, featured_image_url,
             status: status || 'draft',
@@ -109,10 +84,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
 });
 
-/**
- * @route PUT /api/admin/blog/:id
- * @description Atualiza um post, incluindo os campos de SEO.
- */
+// Rota PUT para atualizar um post
 router.put('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { 
@@ -131,7 +103,6 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (image_alt_text !== undefined) updateData.image_alt_text = image_alt_text;
 
     try {
-        // ALTERADO: Usando o cliente centralizado
         const { data, error } = await supabaseServerClient.from('blog_posts').update(updateData).eq('id', id).select().single();
         if (error) throw error;
         res.status(200).json(data);
@@ -141,13 +112,10 @@ router.put('/:id', async (req: Request, res: Response) => {
     }
 });
 
-/**
- * @route DELETE /api/admin/blog/:id
- */
+// Rota DELETE para excluir um post
 router.delete('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     try {
-        // ALTERADO: Usando o cliente centralizado
         const { error } = await supabaseServerClient.from('blog_posts').delete().eq('id', id);
         if (error) throw error;
         res.status(204).send();

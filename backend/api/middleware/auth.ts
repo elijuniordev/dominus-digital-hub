@@ -1,3 +1,5 @@
+console.log('[DEBUG] Carregando: middleware/auth.ts');
+
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import config from '../../config.js';

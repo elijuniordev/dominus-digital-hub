@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ArrowLeft } from "lucide-react";
 import DOMPurify from 'dompurify';
+import apiClient from "@/api/apiClient";
 
 // --- TIPAGEM para os Posts do Blog ---
 type BlogPost = {
@@ -56,8 +57,21 @@ const BlogPage = () => {
   }, [toast]);
 
   useEffect(() => {
+    const fetchPosts = async () => {
+      setIsLoading(true);
+      try {
+        // CORREÇÃO: A chamada deve ser para a rota pública.
+        const response = await apiClient.get('/api/public/blog'); 
+        setPosts(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar posts:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchPosts();
-  }, [fetchPosts]);
+  }, []);
 
   const PostSkeleton = () => (
     <Card className="overflow-hidden flex flex-col md:flex-row">

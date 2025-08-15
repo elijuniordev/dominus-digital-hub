@@ -1,11 +1,11 @@
 // backend/api/admin/blog_helpers.ts
 import { Router, Request, Response } from 'express';
-// ADICIONADO: Importa nosso cliente Supabase centralizado e seguro.
+// ADICIONADO: Importa nosso cliente Supabase centralizado com a extensão .js
 import supabaseServerClient from '../../lib/supabase-server.js';
 
-// REMOVIDO: A importação do createClient e a inicialização local foram retiradas.
-
 const router = Router();
+
+// REMOVIDO: Toda a inicialização local do Supabase.
 
 // Rota para buscar todos os usuários (para serem autores)
 router.get('/users', async (req: Request, res: Response) => {
@@ -13,7 +13,7 @@ router.get('/users', async (req: Request, res: Response) => {
         // ALTERADO: Usando o cliente centralizado
         const { data, error } = await supabaseServerClient
             .from('users')
-            .select('id, email, role'); // Selecionamos os campos necessários
+            .select('id, email, role'); 
         if (error) throw error;
         res.status(200).json(data);
     } catch (error) {

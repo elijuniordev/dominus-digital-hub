@@ -1,17 +1,27 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "composite": true,
-    "skipLibCheck": true,
+    "outDir": "./dist",
+    "rootDir": "..",
+    "baseUrl": "..",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "composite": true,
+    "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
-    "baseUrl": ".",
+    "sourceMap": true,
     "paths": {
-      "@/*": ["*"]
+      "@backend/*": ["backend/*"],
+      "@src/*": ["src/*"]
     }
   },
-  "include": ["**/*.ts", "../src/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "backend/**/*.ts",      // Inclui todo o código do backend
+    "src/lib/icon-map.ts" // Inclui o arquivo compartilhado
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

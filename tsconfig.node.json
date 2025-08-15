@@ -1,16 +1,13 @@
 {
-  "extends": "../../tsconfig.json",
+  // CORREÇÃO: O caminho agora aponta para o arquivo na mesma pasta.
+  "extends": "./tsconfig.json",
   "compilerOptions": {
     "composite": true,
     "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "baseUrl": "../", // CORREÇÃO: Define o diretório base para a raiz do projeto.
-    "paths": {
-      "@/*": ["src/*"] // CORRIGIDO: O caminho agora é relativo ao novo 'baseUrl'.
-    }
+    "strict": true
   },
   "include": ["vite.config.ts"]
 }

@@ -5,9 +5,10 @@
   "type": "module",
   "main": "server.ts",
   "scripts": {
-    "dev": "node --loader ts-node/esm --experimental-specifier-resolution=node --inspect server.ts",
+    "clean": "rm -rf dist",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node ./dist/server.js",
+    "dev": "npm run build && npm run start"
   },
   "keywords": [],
   "author": "",

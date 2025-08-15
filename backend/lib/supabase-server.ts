@@ -1,3 +1,5 @@
+console.log('[DEBUG] Carregando: lib/supabase-server.ts');
+
 import { createClient } from '@supabase/supabase-js';
 import config from '../config.js';
 

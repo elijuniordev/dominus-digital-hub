@@ -1,3 +1,5 @@
+console.log('[DEBUG] Carregando: config.ts'); 
+
 import dotenv from 'dotenv';
 
 // Carrega as variáveis do arquivo .env
