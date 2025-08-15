@@ -1,13 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ArrowLeft } from "lucide-react";
 import DOMPurify from 'dompurify';
-import apiClient from "@/api/apiClient";
+// CORREÇÃO: Importando do novo arquivo para burlar o cache
+import apiService from "@/api/apiService"; 
 
 // --- TIPAGEM para os Posts do Blog ---
 type BlogPost = {
@@ -15,63 +15,41 @@ type BlogPost = {
   title: string;
   slug: string;
   content: string | null;
-  status: 'draft' | 'published';
   featured_image_url: string | null;
   publish_date: string | null;
   blog_categories: { name: string } | null;
 };
 
-// CORRIGIDO: Função de resumo segura que remove tags HTML antes de cortar
 const createExcerpt = (text: string | null | undefined, maxLength: number = 120) => {
   if (!text) return '';
-  // 1. Sanitiza o conteúdo removendo todas as tags HTML
   const sanitizedText = DOMPurify.sanitize(text, { ALLOWED_TAGS: [] });
-  
   if (sanitizedText.length <= maxLength) return sanitizedText.trim();
-  // Garante que o corte não quebre palavras
   const trimmedText = sanitizedText.slice(0, maxLength);
   return trimmedText.slice(0, trimmedText.lastIndexOf(' ')) + '...';
 };
 
 const BlogPage = () => {
-  const { toast } = useToast();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchPosts = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/admin/blog');
-      if (!response.ok) {
-        throw new Error("Não foi possível carregar os artigos do blog.");
-      }
-      const allPosts: BlogPost[] = await response.json();
-      const publishedPosts = allPosts.filter(post => post.status === 'published' && post.publish_date);
-      setPosts(publishedPosts);
-    } catch (error) {
-      const desc = error instanceof Error ? error.message : "Erro desconhecido.";
-      toast({ title: "Erro", description: desc, variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
-
+  // A lógica de busca foi simplificada para usar apenas um useEffect
   useEffect(() => {
     const fetchPosts = async () => {
       setIsLoading(true);
       try {
-        // CORREÇÃO: A chamada deve ser para a rota pública.
-        const response = await apiClient.get('/api/public/blog'); 
+        // CORREÇÃO: Usando o novo 'apiService' para a chamada
+        const response = await apiService.get('/api/public/blog'); 
         setPosts(response.data);
       } catch (error) {
         console.error("Erro ao buscar posts:", error);
+        // Aqui você pode adicionar um toast de erro se quiser
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchPosts();
-  }, []);
+  }, []); // O array vazio [] garante que isso rode apenas uma vez
 
   const PostSkeleton = () => (
     <Card className="overflow-hidden flex flex-col md:flex-row">
@@ -91,9 +69,7 @@ const BlogPage = () => {
       <main className="flex-grow">
         <div className="py-16 sm:py-24">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            
             <div className="max-w-4xl mx-auto">
-              {/* --- BOTÃO DE VOLTAR ADICIONADO --- */}
               <Link
                 to="/"
                 className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors mb-8"
@@ -118,7 +94,6 @@ const BlogPage = () => {
                 posts.map((post) => (
                   <Link to={`/blog/${post.slug}`} key={post.id} className="group block">
                     <Card className="overflow-hidden transition-all duration-300 group-hover:shadow-lg flex flex-col md:flex-row">
-                      {/* CORREÇÃO: Garante que a imagem seja renderizada corretamente */}
                       <img
                         src={post.featured_image_url || 'https://via.placeholder.com/400x300'}
                         alt={`Imagem do post ${post.title}`}
@@ -145,7 +120,7 @@ const BlogPage = () => {
                 ))
               ) : (
                 <div className="text-center py-16">
-                    <p className="text-muted-foreground">Nenhum artigo publicado ainda.</p>
+                  <p className="text-muted-foreground">Nenhum artigo publicado ainda.</p>
                 </div>
               )}
             </div>

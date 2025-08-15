@@ -10,14 +10,15 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // ADICIONE ESTE BLOCO DE CÓDIGO
   server: {
-    // Proxy para redirecionar requisições /api para o backend
     proxy: {
+      // Qualquer requisição que comece com /api será redirecionada
       '/api': {
-        target: 'http://localhost:3000', // URL do seu servidor de backend
-        changeOrigin: true,        
+        target: 'http://localhost:3000', // O endereço do seu backend
+        changeOrigin: true, // Necessário para o redirecionamento funcionar
+        rewrite: (path) => path.replace(/^\/api/, '/api'), // Mantém o /api no caminho final
       },
     },
-    port: 5173,
   },
-});
+})
