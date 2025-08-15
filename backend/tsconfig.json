@@ -1,18 +1,21 @@
+// backend/tsconfig.json
+
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "composite": true,
     "skipLibCheck": true,
-    "module": "commonjs",
-    "moduleResolution": "node",
+    // MUDE AQUI
+    "module": "NodeNext",
+    // E AQUI
+    "moduleResolution": "NodeNext",
     "allowSyntheticDefaultImports": true,
     "strict": true,
-    "baseUrl": "../",
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["*"]
     }
   },
-  // CORRIGIDO: Adiciona a pasta 'src' ao escopo de inclusão
   "include": ["**/*.ts", "../src/**/*.ts"],
   "exclude": ["node_modules"]
 }

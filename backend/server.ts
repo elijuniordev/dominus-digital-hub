@@ -1,53 +1,78 @@
-import express from 'express';
+// O ARQUIVO DE CONFIGURAÇÃO DEVE SER O PRIMEIRO A SER IMPORTADO
+// Ele carrega e valida as variáveis de ambiente antes de qualquer outro código.
+import config from './config.js';
+
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 
-// Importações dos roteadores de administração
-import blogRouter from './api/admin/blog';
-import clientsRouter from './api/admin/clients';
-import dashboardRouter from './api/admin/dashboard';
-import ordersRouter from './api/admin/orders';
-import physicalOrdersRouter from './api/admin/physical_orders';
-import servicesAdminRouter from './api/admin/services';
+// Imports dos roteadores com a extensão .js, como requerido por ES Modules
+import blogRouter from './api/admin/blog.js';
+import clientsRouter from './api/admin/clients.js';
+import dashboardRouter from './api/admin/dashboard.js';
+import ordersRouter from './api/admin/orders.js';
+import physicalOrdersRouter from './api/admin/physical_orders.js';
+import servicesAdminRouter from './api/admin/services.js';
+import publicServicesRouter from './api/public/services.js';
+import activationRouter from './api/public/activation.js';
+import clientDashboardRouter from './api/client/dashboard.js';
 
-// Importações dos roteadores públicos e do cliente
-import publicServicesRouter from './api/public/services';
-import activationRouter from './api/public/activation';
-import clientDashboardRouter from './api/client/dashboard';
-// CORRIGIDO: Assumindo que client/orders tem um router e que a exportação não é padrão
-import { clientOrdersRouter } from './api/client/orders'; 
+// Opcional: Rota de pedidos do cliente (se o arquivo existir)
+// import clientOrdersRouter from './api/client/orders.js'; 
 
-// Importa o middleware de autenticação
-import { authMiddleware } from './api/middleware/auth'; // CORRIGIDO: Importação nomeada
-
-dotenv.config();
+// Importa o middleware de autenticação com o nome correto
+import { authenticateToken } from './api/middleware/auth.js';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+// Usa a porta a partir do nosso arquivo de configuração centralizado
+const PORT = config.port;
 
-// Middleware
-app.use(cors({ origin: '*' }));
+// --- Middlewares ---
+const allowedOrigins = [
+  'http://localhost:5173', // Endereço do seu frontend em desenvolvimento
+  'https://www.seudominio.com' // TODO: Mude para o seu domínio em produção
+];
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Acesso não permitido por CORS'));
+    }
+  }
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 
-// Rotas da API para o painel de administrador (protegidas com authMiddleware)
-app.use('/api/admin/blog', authMiddleware, blogRouter);
-app.use('/api/admin/clients', authMiddleware, clientsRouter);
-app.use('/api/admin/dashboard', authMiddleware, dashboardRouter);
-app.use('/api/admin/orders', authMiddleware, ordersRouter);
-app.use('/api/admin/physical_orders', authMiddleware, physicalOrdersRouter);
-app.use('/api/admin/services', authMiddleware, servicesAdminRouter);
+// --- Rotas da API ---
 
-// Rotas da API do Cliente (protegidas com authMiddleware)
-app.use('/api/client/dashboard', authMiddleware, clientDashboardRouter);
-app.use('/api/client/orders', authMiddleware, clientOrdersRouter);
+// Rotas de Administrador (Protegidas)
+app.use('/api/admin/blog', authenticateToken, blogRouter);
+app.use('/api/admin/clients', authenticateToken, clientsRouter);
+app.use('/api/admin/dashboard', authenticateToken, dashboardRouter);
+app.use('/api/admin/orders', authenticateToken, ordersRouter);
+app.use('/api/admin/physical_orders', authenticateToken, physicalOrdersRouter);
+app.use('/api/admin/services', authenticateToken, servicesAdminRouter);
 
-// Rotas da API Pública (sem proteção)
+// Rotas de Cliente (Protegidas)
+app.use('/api/client/dashboard', authenticateToken, clientDashboardRouter);
+// app.use('/api/client/orders', authenticateToken, clientOrdersRouter); // Descomente quando o arquivo 'orders.ts' do cliente for criado
+
+// Rotas Públicas (Abertas)
 app.use('/api/public/activation', activationRouter);
 app.use('/api/services', publicServicesRouter);
 
-// Rota padrão
-app.get('/', (req, res) => {
+// --- Rotas Finais e Inicialização ---
+
+app.get('/', (req: Request, res: Response) => {
   res.send('API da Dominus Digital Hub está operacional!');
+});
+
+// Middleware de tratamento de erros centralizado
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error('[ERRO NÃO TRATADO]:', err.stack);
+  res.status(500).json({ 
+    error: 'Ocorreu um erro inesperado no servidor.' 
+  });
 });
 
 app.listen(PORT, () => {

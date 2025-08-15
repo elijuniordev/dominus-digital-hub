@@ -2,6 +2,7 @@
   "name": "dominus-digital-hub-backend",
   "version": "1.0.0",
   "description": "Backend server for Dominus Digital Hub",
+  "type": "module",
   "main": "server.ts",
   "scripts": {
     "dev": "node --loader ts-node/esm --experimental-specifier-resolution=node --inspect server.ts",

@@ -1,27 +1,24 @@
+// backend/api/middleware/auth.ts
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
+import config from '../../config.js'; // Importa a configuração centralizada
 
-const supabaseJwtSecret = process.env.SUPABASE_JWT_SECRET;
-
-if (!supabaseJwtSecret) {
-    throw new Error('A SUPABASE_JWT_SECRET não está definida no .env do backend.');
-}
+const supabaseJwtSecret = config.supabaseJwtSecret!;
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Formato "Bearer TOKEN"
+    const token = authHeader && authHeader.split(' ')[1];
 
     if (token == null) {
-        return res.sendStatus(401); // Unauthorized
+        return res.sendStatus(401);
     }
 
     jwt.verify(token, supabaseJwtSecret, (err, decoded) => {
         if (err) {
             console.error("Erro na verificação do token:", err);
-            return res.sendStatus(403); // Forbidden
+            return res.sendStatus(403);
         }
         
-        // O bloco namespace foi removido daqui. O TypeScript agora entende req.user globalmente.
         req.user = decoded as JwtPayload & { id: string };
         next();
     });
