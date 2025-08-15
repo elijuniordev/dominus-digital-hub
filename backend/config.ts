@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 
-// Carrega as variáveis do arquivo .env para process.env
+// Carrega as variáveis do arquivo .env
 dotenv.config();
 
 // Valida as variáveis essenciais e as exporta
@@ -11,11 +11,11 @@ const config = {
   port: process.env.PORT || 3001,
 };
 
-// Verifica se alguma variável essencial está faltando
+// Se alguma variável essencial estiver faltando, o servidor irá parar com uma mensagem clara.
 if (!config.supabaseUrl || !config.supabaseServiceKey || !config.supabaseJwtSecret) {
-  console.error("ERRO: Variáveis de ambiente essenciais do Supabase não foram definidas.");
-  console.error("Verifique se o arquivo .env existe na pasta /backend e contém SUPABASE_URL, SUPABASE_SERVICE_KEY, e SUPABASE_JWT_SECRET.");
-  process.exit(1); // Encerra a aplicação com um código de erro
+  console.error("ERRO CRÍTICO: Variáveis de ambiente do Supabase não definidas.");
+  console.error("Verifique se o arquivo .env existe na pasta /backend e contém as chaves necessárias.");
+  process.exit(1); // Encerra a aplicação
 }
 
 export default config;

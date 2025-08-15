@@ -1,8 +1,7 @@
-// backend/lib/supabase-server.ts
 import { createClient } from '@supabase/supabase-js';
-import config from '../config.js'; // Importa a configuração centralizada
+import config from '../config.js';
 
-// Usa as variáveis já validadas do objeto de configuração
+// Cria uma única instância do cliente Supabase para ser usada em todo o backend.
 const supabaseServerClient = createClient(config.supabaseUrl!, config.supabaseServiceKey!);
 
 export default supabaseServerClient;

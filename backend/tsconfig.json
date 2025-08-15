@@ -1,13 +1,9 @@
-// backend/tsconfig.json
-
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "composite": true,
     "skipLibCheck": true,
-    // MUDE AQUI
     "module": "NodeNext",
-    // E AQUI
     "moduleResolution": "NodeNext",
     "allowSyntheticDefaultImports": true,
     "strict": true,
